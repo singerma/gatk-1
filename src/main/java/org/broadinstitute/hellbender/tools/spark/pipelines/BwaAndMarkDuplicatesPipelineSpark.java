@@ -8,6 +8,7 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.SequenceDictionaryValidationArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.MarkDuplicatesSparkArgumentCollection;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
@@ -55,6 +56,11 @@ public final class BwaAndMarkDuplicatesPipelineSpark extends GATKSparkTool {
     @ArgumentCollection
     protected MarkDuplicatesSparkArgumentCollection markDuplicatesSparkArgumentCollection = new MarkDuplicatesSparkArgumentCollection();
 
+
+    @Override
+    protected SequenceDictionaryValidationArgumentCollection getSequenceDictionaryValidationArgumentCollection() {
+        return new SequenceDictionaryValidationArgumentCollection.NoValidationCollection();
+    }
 
     @Override
     protected void runTool(final JavaSparkContext ctx) {

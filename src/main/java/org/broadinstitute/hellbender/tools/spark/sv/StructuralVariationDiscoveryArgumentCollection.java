@@ -55,11 +55,11 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
 
         @Argument(doc = "Minimum weight of the corroborating read evidence to validate some single piece of evidence.",
                 fullName = "min-evidence-count")
-        public int minEvidenceWeight = 15;
+        public double minEvidenceWeightPerCoverage = 15.0 / 42.855164;
 
         @Argument(doc = "Minimum weight of the evidence that shares a distal target locus to validate the evidence.",
                 fullName = "min-coherent-evidence-count")
-        public int minCoherentEvidenceWeight = 7;
+        public double minCoherentEvidenceWeightPerCoverage = 7.0 / 42.855164;
 
         @Argument(doc = "Minimum number of localizing kmers in a valid interval.", fullName="min-kmers-per-interval")
         public int minKmersPerInterval = 5;
@@ -194,7 +194,36 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
                 fullName = OUTPUT_ORDER_FULL_NAME,
                 optional = true)
         public SAMFileHeader.SortOrder assembliesSortOrder = SAMFileHeader.SortOrder.coordinate;
+
+        @Argument(doc = "Path to xgboost classifier model file for evidence filtering",
+                fullName = "sv-evidence-filter-model-file")
+        public String svEvidenceFilterModelFile = "gatk-resources::/large/sv_evidence_classifier.bin";
+
+        @Argument(doc = "Path to single read 100-mer mappability file", fullName = "sv-genome-umap_s100-file")
+        public String svGenomeUmapS100File = "gatk-resources::/large/hg38_umap_s100.txt.gz";
+
+        @Argument(doc = "Path to file enumerating gaps in the reference genome", fullName = "sv-genome-gaps-file")
+        public String svGenomeGapsFile = "gatk-resources::/large/hg38_gaps.txt.gz";
+
+        @Argument(doc = "Path to file enumerating centromeres in the reference genome",
+                fullName = "sv-genome-centromeres-file")
+        public String svGenomeCentromeresFile = "gatk-resources::/large/hg38_centromeres.txt.gz";
+
+        @Argument(doc = "Path to file specifying encoding of categorical variables", optional=true,
+                fullName = "sv-evidence-categorical-variables-file")
+        //public String svCategoricalVariablesFile = "gatk-resources::/large/sv_evidence_categorical_variables.json";
+        public String svCategoricalVariablesFile = null;
+
+        @Argument(doc = "Minimum classified probability for a piece of evidence to pass xgboost evidence filter",
+                fullName = "sv-evidence-filter-threshold-probability")
+        public double svEvidenceFilterThresholdProbability = 0.3;
+
+        @Argument(doc = "Filter method for selecting evidence to group into SV Intervals",
+                fullName = "sv-evidence-filter-type")
+        public SvEvidenceFilterType svEvidenceFilterType = SvEvidenceFilterType.DENSITY;
     }
+
+    public enum SvEvidenceFilterType {DENSITY, XGBOOST;}
 
     public static class DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection implements Serializable {
         private static final long serialVersionUID = 1L;
@@ -241,5 +270,4 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
                 fullName = "cpx-for-human-eye", optional = true)
         public boolean outputCpxResultsInHumanReadableFormat = false;
     }
-
 }

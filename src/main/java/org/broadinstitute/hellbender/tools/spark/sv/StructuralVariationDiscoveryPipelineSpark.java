@@ -209,6 +209,7 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
 
         return new SvDiscoveryInputData(ctx, discoverStageArgs, outputPrefixWithSampleName,
                 assembledEvidenceResults.getReadMetadata(), assembledEvidenceResults.getAssembledIntervals(),
+                assembledEvidenceResults.getAlignedAssemblyOrExcuseList(),
                 makeEvidenceLinkTree(assembledEvidenceResults.getEvidenceTargetLinks()),
                 cnvCallsBroadcast,
                 getReads(), getHeaderForReads(), getReference(), localLogger);
@@ -289,6 +290,7 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
                 new SvDiscoveryInputData(sampleId, svDiscoveryInputData.discoverStageArgs,
                         svDiscoveryInputData.outputPath + "experimentalInterpretation_",
                         svDiscoveryInputData.metadata, svDiscoveryInputData.assembledIntervals,
+                        svDiscoveryInputData.intervalAssemblies,
                         svDiscoveryInputData.evidenceTargetLinks, reads, svDiscoveryInputData.toolLogger,
                         referenceBroadcast, referenceSequenceDictionaryBroadcast, headerBroadcast, cnvCallsBroadcast);
 
@@ -356,7 +358,7 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
                                         .mapToObj(contigIdx ->
                                                 BwaMemAlignmentUtils.toSAMStreamForRead(
                                                         AlignedAssemblyOrExcuse.formatContigName(assemblyId, contigIdx),
-                                                        assembly.getContig(contigIdx).getSequence(),
+                                                        assembly.getContig(contigIdx).getSequence(), null,
                                                         allAlignmentsOfThisAssembly.get(contigIdx),
                                                         cleanHeader, refNames,
                                                         new SAMReadGroupRecord(SVUtils.GATKSV_CONTIG_ALIGNMENTS_READ_GROUP_ID)

@@ -14,7 +14,7 @@ fi
 # but tagged with a git hash that is present in multiple branches,
 # this makes $GIT_BRANCH a space-delimited string hence may mess with arg parsing
 GIT_BRANCH=$(git -C ${GATK_DIR} rev-parse --abbrev-ref HEAD)
-UNTRACKED_COMMIT=$(git diff-index --quiet HEAD -- || echo "-untracked")
+UNTRACKED_COMMIT=$(git -C ${GATK_DIR} diff-index --quiet HEAD -- || echo "-untracked")
 if [[ ${UNTRACKED_COMMIT} ]]; then
     echo "There are uncommitted changes in your current branch ($GIT_BRANCH); this might cause problems:"
     echo "  either later argument parsing may be messed up, or "

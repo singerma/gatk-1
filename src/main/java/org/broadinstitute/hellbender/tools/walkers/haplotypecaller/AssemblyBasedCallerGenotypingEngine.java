@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import htsjdk.variant.variantcontext.*;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.hadoop.io.Text;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AFCalculatorProvider;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -149,11 +148,22 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
                                                                final List<VariantContext> activeAllelesToGenotype) {
         // the overlapping events to merge into a common reference view
 
-        final SortedMap<LocationAndAlleles, VariantContext> overlappingVCsByLocationAndAlleles = new TreeMap<>(Comparator.comparing(LocationAndAlleles::getLoc));
+                if (loc == 10008952) {
+            int foo = loc;
+        }
+
+        final List<VariantContext> results = new ArrayList<>();
+        final Set<LocationAndAlleles> uniqueLocationsAndAlleles = new HashSet<>();
 
         if( activeAllelesToGenotype.isEmpty() ) {
             haplotypes.stream().flatMap(h -> Utils.stream(h.getEventMap().getSpanningEvents(loc)))
-                    .filter(Objects::nonNull).forEach(v -> overlappingVCsByLocationAndAlleles.put(new LocationAndAlleles(v.getStart(), v.getAlleles()), v));
+                    .filter(Objects::nonNull).forEach(v -> {
+                final LocationAndAlleles locationAndAlleles = new LocationAndAlleles(v.getStart(), v.getAlleles());
+                if (! uniqueLocationsAndAlleles.contains(locationAndAlleles)) {
+                    uniqueLocationsAndAlleles.add(locationAndAlleles);
+                    results.add(v);
+                }
+            });
         } else { // we are in GGA mode!
             int compCount = 0;
             for( final VariantContext compVC : activeAllelesToGenotype ) {
@@ -167,7 +177,13 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
                         final String vcSourceName = "Comp" + compCount + "Allele" + alleleCount;
                         // check if this event is already in the list of events due to a repeat in the input alleles track
                         final VariantContext candidateEventToAdd = new VariantContextBuilder(compVC).alleles(alleleSet).source(vcSourceName).make();
-                        overlappingVCsByLocationAndAlleles.put(new LocationAndAlleles(candidateEventToAdd.getStart(), candidateEventToAdd.getAlleles()), candidateEventToAdd);
+
+                        final LocationAndAlleles locationAndAlleles = new LocationAndAlleles(candidateEventToAdd.getStart(), candidateEventToAdd.getAlleles());
+                        if (! uniqueLocationsAndAlleles.contains(locationAndAlleles)) {
+                            uniqueLocationsAndAlleles.add(locationAndAlleles);
+                            results.add(candidateEventToAdd);
+                        }
+
                         alleleCount++;
                     }
                 }
@@ -175,7 +191,54 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
             }
         }
 
-        return new ArrayList<>(overlappingVCsByLocationAndAlleles.values());
+        return results;
+    }
+
+//    protected static List<VariantContext> getVCsAtThisLocation(final List<Haplotype> haplotypes,
+//                                                               final int loc,
+//                                                               final List<VariantContext> activeAllelesToGenotype) {
+//        if (loc == 10008952) {
+//            int foo = loc;
+//        }
+//        // the overlapping events to merge into a common reference view
+//        final List<VariantContext> eventsAtThisLoc = new ArrayList<>();
+//
+//        if( activeAllelesToGenotype.isEmpty() ) {
+//            final List<VariantContext> events = haplotypes.stream().map(h -> h.getEventMap().get(loc))
+//                    .filter(Objects::nonNull).collect(Collectors.toList());
+//            for (final VariantContext vc : events) {
+//                if (eventsAtThisLoc.stream().noneMatch(vc::hasSameAllelesAs)) {
+//                    eventsAtThisLoc.add(vc);
+//                }
+//            }
+//        } else { // we are in GGA mode!
+//            int compCount = 0;
+//            for( final VariantContext compVC : activeAllelesToGenotype ) {
+//                if( compVC.getStart() == loc ) {
+//                    int alleleCount = 0;
+//                    for( final Allele compAltAllele : compVC.getAlternateAlleles() ) {
+//                        final List<Allele> alleleSet = Arrays.asList(compVC.getReference(), compAltAllele);
+//
+//                        //TODO: this source name seems arbitrary and probably just has to be unique
+//                        //TODO: how about replace it by vcSourceName = String.parseInt(nameCounter++)?
+//                        final String vcSourceName = "Comp" + compCount + "Allele" + alleleCount;
+//                        // check if this event is already in the list of events due to a repeat in the input alleles track
+//                        final VariantContext candidateEventToAdd = new VariantContextBuilder(compVC).alleles(alleleSet).source(vcSourceName).make();
+//                        if (eventsAtThisLoc.stream().noneMatch(candidateEventToAdd::hasSameAllelesAs))  {
+//                            eventsAtThisLoc.add(candidateEventToAdd);
+//                        }
+//                        alleleCount++;
+//                    }
+//                }
+//                compCount++;
+//            }
+//        }
+//
+//        return eventsAtThisLoc;
+//    }
+
+    private static void addLocationAndAllelesToMap(final Map<LocationAndAlleles, VariantContext> overlappingVCsByLocationAndAlleles, final VariantContext v) {
+        overlappingVCsByLocationAndAlleles.put(new LocationAndAlleles(v.getStart(), v.getAlleles()), v);
     }
 
     protected static Map<Allele, List<Haplotype>> createAlleleMapper(final List<VariantContext> eventsAtThisLoc,
@@ -194,20 +257,47 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
         //in eventsAtThisLoc, when in mergedVC it would yield AAA* AA A
         mergedVC.getAlternateAlleles().stream().filter(a -> !a.isSymbolic()).forEach(a -> result.put(a, new ArrayList<>()));
 
+        if (loc == 10037037) {
+            int foo = loc;
+        }
         for (final Haplotype h : haplotypes) {
-            final VariantContext haplotypeVC = h.getEventMap().get(loc);
-            if (haplotypeVC == null) {    //no events --> this haplotype supports the reference at this locus
-                result.get(ref).add(h);
-            } else {
-                //TODO: this only works if eventsAtThisLoc's and mergedVC's alleles are ordered identically.
-                //TODO: this is in fact the case (see AssemblyBasedCallerUtils::makeMergedVariantContext), but
-                //TODO: that's not good enough
-                for (int n = 0; n < eventsAtThisLoc.size(); n++) {
-                    if (haplotypeVC.hasSameAllelesAs(eventsAtThisLoc.get(n))) {
-                        result.get(mergedVC.getAlternateAllele(n)).add(h);
-                        break;
+
+            boolean foundVCForHap = false;
+
+            final Iterator<VariantContext> spanningEvents = h.getEventMap().getSpanningEvents(loc);
+
+            while (spanningEvents.hasNext()) {
+                final VariantContext spanningEvent = spanningEvents.next();
+                if (spanningEvent.getStart() == loc) {
+                    //TODO: this only works if eventsAtThisLoc's and mergedVC's alleles are ordered identically.
+                    //TODO: this is in fact the case (see AssemblyBasedCallerUtils::makeMergedVariantContext), but
+                    //TODO: that's not good enough
+                    int alleleIndex = 0;
+                    for (int n = 0; n < eventsAtThisLoc.size(); n++) {
+                        if (eventsAtThisLoc.get(n).getAlternateAllele(0).equals(Allele.SPAN_DEL)) {
+                            alleleIndex = 1;
+                            continue;
+                        }
+                        if (spanningEvent.hasSameAllelesAs(eventsAtThisLoc.get(n))) {
+                            result.get(mergedVC.getAlternateAllele(alleleIndex)).add(h);
+                            foundVCForHap = true;
+                            break;
+                        }
+                        alleleIndex++;
                     }
+
+                } else {
+                    if (! result.containsKey(Allele.SPAN_DEL)) {
+                        result.put(Allele.SPAN_DEL, new ArrayList<>());
+                    }
+                    result.get(Allele.SPAN_DEL).add(h);
+                    foundVCForHap = true;
+                    break;
                 }
+            }
+
+            if (! foundVCForHap) {    //no events --> this haplotype supports the reference at this locus
+                result.get(ref).add(h);
             }
         }
         return result;

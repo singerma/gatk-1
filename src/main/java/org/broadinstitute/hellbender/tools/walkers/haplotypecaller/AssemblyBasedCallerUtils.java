@@ -220,7 +220,7 @@ public final class AssemblyBasedCallerUtils {
             return null;
         }
         final List<String> haplotypeSources = vcs.stream().map(VariantContext::getSource).collect(Collectors.toList());
-        return GATKVariantContextUtils.simpleMerge(vcs, loc, haplotypeSources,
+        return GATKVariantContextUtils.simpleMerge(vcs, haplotypeSources,
                 GATKVariantContextUtils.FilteredRecordMergeType.KEEP_IF_ANY_UNFILTERED,
                 GATKVariantContextUtils.GenotypeMergeType.PRIORITIZE, false, false, null, false, false);
     }

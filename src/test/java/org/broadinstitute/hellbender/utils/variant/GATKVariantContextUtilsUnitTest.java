@@ -102,22 +102,16 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
     // --------------------------------------------------------------------------------
 
     private class MergeAllelesTest extends TestDataProvider {
-        Locatable loc;
         List<List<Allele>> inputs;
         List<Allele> expected;
 
         @SafeVarargs
         @SuppressWarnings("varargs")
-        private MergeAllelesTest(final Locatable loc, List<Allele>... arg) {
+        private MergeAllelesTest(List<Allele>... arg) {
             super(MergeAllelesTest.class);
-            this.loc = loc;
             LinkedList<List<Allele>> all = new LinkedList<>(Arrays.asList(arg));
             expected = all.pollLast();
             inputs = all;
-        }
-
-        public MergeAllelesTest(final List<Allele>... alleles) {
-            this(baseLoc, alleles);
         }
 
         public String toString() {
@@ -189,7 +183,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         final List<String> priority = vcs2priority(inputs);
 
         final VariantContext merged = GATKVariantContextUtils.simpleMerge(
-                inputs, cfg.loc, priority,
+                inputs, priority,
                 GATKVariantContextUtils.FilteredRecordMergeType.KEEP_IF_ANY_UNFILTERED,
                 GATKVariantContextUtils.GenotypeMergeType.PRIORITIZE, false, false, "set", false, false);
 
@@ -252,7 +246,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
                 .collect(Collectors.toList());
 
         final VariantContext merged = GATKVariantContextUtils.simpleMerge(
-                inputs, cfg.loc, null,
+                inputs,null,
                 GATKVariantContextUtils.FilteredRecordMergeType.KEEP_IF_ANY_UNFILTERED,
                 GATKVariantContextUtils.GenotypeMergeType.UNSORTED, false, false, "set", false, false);
         Assert.assertEquals(merged.getID(), cfg.expected);
@@ -268,7 +262,6 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         List<VariantContext> inputs;
         VariantContext expected;
         String setExpected;
-        Locatable loc;
         GATKVariantContextUtils.FilteredRecordMergeType type;
 
 
@@ -283,7 +276,6 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
             this.type = type;
             inputs = all;
             this.setExpected = setExpected;
-            this.loc = loc;
         }
 
         private MergeFilteredTest(String name, VariantContext input1, VariantContext input2, VariantContext expected, GATKVariantContextUtils.FilteredRecordMergeType type, String setExpected) {
@@ -375,7 +367,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
     public void testMergeFiltered(MergeFilteredTest cfg) {
         final List<String> priority = vcs2priority(cfg.inputs);
         final VariantContext merged = GATKVariantContextUtils.simpleMerge(
-                cfg.inputs, cfg.loc, priority, cfg.type, GATKVariantContextUtils.GenotypeMergeType.PRIORITIZE, true, false, "set", false, false);
+                cfg.inputs, priority, cfg.type, GATKVariantContextUtils.GenotypeMergeType.PRIORITIZE, true, false, "set", false, false);
 
         // test alleles are equal
         Assert.assertEquals(merged.getAlleles(), cfg.expected.getAlleles());
@@ -521,7 +513,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
     @Test(dataProvider = "mergeGenotypes")
     public void testMergeGenotypes(MergeGenotypesTest cfg) {
         final VariantContext merged = GATKVariantContextUtils.simpleMerge(
-                cfg.inputs, cfg.loc, cfg.priority, GATKVariantContextUtils.FilteredRecordMergeType.KEEP_IF_ANY_UNFILTERED,
+                cfg.inputs, cfg.priority, GATKVariantContextUtils.FilteredRecordMergeType.KEEP_IF_ANY_UNFILTERED,
                 GATKVariantContextUtils.GenotypeMergeType.PRIORITIZE, true, false, "set", false, false);
 
         // test alleles are equal
@@ -562,7 +554,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         final VariantContext vc2 = makeVC("2", Arrays.asList(Aref, T), makeG("s1", Aref, T, -2));
 
         final VariantContext merged = GATKVariantContextUtils.simpleMerge(
-                Arrays.asList(vc1, vc2), vc1, null, GATKVariantContextUtils.FilteredRecordMergeType.KEEP_IF_ANY_UNFILTERED,
+                Arrays.asList(vc1, vc2), null, GATKVariantContextUtils.FilteredRecordMergeType.KEEP_IF_ANY_UNFILTERED,
                 GATKVariantContextUtils.GenotypeMergeType.UNIQUIFY, false, false, "set", false, false);
 
         // test genotypes
@@ -595,7 +587,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
                 VariantContext vc2 = makeVC("2", Arrays.asList(Aref, T), VariantContext.PASSES_FILTERS);
 
                 final VariantContext merged = GATKVariantContextUtils.simpleMerge(
-                        Arrays.asList(vc1, vc2), vc1, priority, GATKVariantContextUtils.FilteredRecordMergeType.KEEP_IF_ANY_UNFILTERED,
+                        Arrays.asList(vc1, vc2), priority, GATKVariantContextUtils.FilteredRecordMergeType.KEEP_IF_ANY_UNFILTERED,
                         GATKVariantContextUtils.GenotypeMergeType.PRIORITIZE, annotate, false, set, false, false);
 
                 if ( annotate )

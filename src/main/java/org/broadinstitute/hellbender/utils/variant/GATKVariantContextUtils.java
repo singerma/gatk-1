@@ -635,7 +635,6 @@ public final class GATKVariantContextUtils {
      * @return new VariantContext       representing the merge of unsortedVCs
      */
     public static VariantContext simpleMerge(final Collection<VariantContext> unsortedVCs,
-                                             final Locatable loc,
                                              final List<String> priorityListOfVCs,
                                              final FilteredRecordMergeType filteredRecordMergeType,
                                              final GenotypeMergeType genotypeMergeOptions,
@@ -645,7 +644,7 @@ public final class GATKVariantContextUtils {
                                              final boolean filteredAreUncalled,
                                              final boolean mergeInfoWithMaxAC ) {
         int originalNumOfVCs = priorityListOfVCs == null ? 0 : priorityListOfVCs.size();
-        return simpleMerge(unsortedVCs, loc, priorityListOfVCs, originalNumOfVCs, filteredRecordMergeType, genotypeMergeOptions, annotateOrigin, printMessages, setKey, filteredAreUncalled, mergeInfoWithMaxAC);
+        return simpleMerge(unsortedVCs, priorityListOfVCs, originalNumOfVCs, filteredRecordMergeType, genotypeMergeOptions, annotateOrigin, printMessages, setKey, filteredAreUncalled, mergeInfoWithMaxAC);
     }
 
     /**
@@ -669,7 +668,6 @@ public final class GATKVariantContextUtils {
      * @return new VariantContext       representing the merge of unsortedVCs
      */
     public static VariantContext simpleMerge(final Collection<VariantContext> unsortedVCs,
-                                             final Locatable loc,
                                              final List<String> priorityListOfVCs,
                                              final int originalNumOfVCs,
                                              final FilteredRecordMergeType filteredRecordMergeType,
@@ -931,6 +929,8 @@ public final class GATKVariantContextUtils {
                     if ( extended.equals(b) )
                         extended = b;
                 map.put(a, extended);
+            } else if (a.equals(Allele.SPAN_DEL)) {
+                map.put(a, a);
             }
         }
 
@@ -938,7 +938,7 @@ public final class GATKVariantContextUtils {
     }
 
     private static boolean isUsableAlternateAllele(final Allele allele) {
-        return ! (allele.isReference() || allele.isSymbolic() );
+        return ! (allele.isReference() || allele.isSymbolic() || allele.equals(Allele.SPAN_DEL));
     }
 
     public static List<VariantContext> sortVariantContextsByPriority(Collection<VariantContext> unsortedVCs, List<String> priorityListOfVCs, GenotypeMergeType mergeOption ) {

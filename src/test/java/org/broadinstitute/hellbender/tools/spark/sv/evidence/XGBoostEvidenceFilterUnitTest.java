@@ -6,6 +6,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import org.apache.spark.api.java.JavaDoubleRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -18,9 +20,7 @@ import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.testng.AssertJUnit;
 import org.testng.annotations.Test;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.InputStream;
+import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -42,24 +42,82 @@ public class XGBoostEvidenceFilterUnitTest extends GATKBaseTest {
     );
     private static final FeaturesTestData featuresTestData = new FeaturesTestData(testFeaturesJsonFile);
 
+    private static final StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection params
+            = new StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection();
+
     private static final SAMFileHeader artificialSamHeader = initSAMFileHeader();
     private static final String readGroupName = "Pond-Testing";
     private static final String DEFAULT_SAMPLE_NAME = "SampleX";
-    private static final ReadMetadata readMetadata = initMetadata();
+    public static final ReadMetadata readMetadata = initMetadata();
     private static final PartitionCrossingChecker emptyCrossingChecker = new PartitionCrossingChecker();
-    private static final StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection params
-            = new StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection();
     private final List<BreakpointEvidence> evidenceList = Arrays.stream(featuresTestData.stringReps)
             .map(strRep -> BreakpointEvidence.fromStringRep(strRep, readMetadata)).collect(Collectors.toList());
 
     private static SAMFileHeader initSAMFileHeader() {
-        final SAMFileHeader samHeader =
-                ArtificialReadUtils.createArtificialSamHeader(26, 1, 1000000);
+        final SAMFileHeader samHeader = createArtificialSamHeader();
         SAMReadGroupRecord readGroup = new SAMReadGroupRecord(readGroupName);
         readGroup.setSample(DEFAULT_SAMPLE_NAME);
         samHeader.addReadGroup(readGroup);
         return samHeader;
     }
+
+    public static SAMFileHeader createArtificialSamHeader() {
+        Comparator<String> contigComparator = new Comparator<String>() {
+            @Override public int compare(String s1, String s2) {
+                return getKey(s1).compareTo(getKey(s2));
+            }
+
+            String getKey(final String contig) {
+                try {
+                    final int contigNum = Integer.parseInt(contig.substring(3));
+                    return "chr" + (contigNum < 10 ? "0" + contigNum : contigNum);
+                } catch(NumberFormatException e) {
+                    if(contig.equals("chrX") || contig.equals("chrY")) {
+                        return contig;
+                    } else {
+                        return "zzz" + contig;
+                    }
+                }
+            }
+        };
+
+        SortedMap<String,Integer> contigLengthMap = new TreeMap<>(contigComparator);
+        final String svGenomeGapsFile = params.svGenomeGapsFile;
+        int lineNumber = -1;
+        try(final InputStream inputStream = XGBoostEvidenceFilter.getInputStream(svGenomeGapsFile)) {
+            final BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+            String line;
+            while((line = reader.readLine()) != null) {
+                ++lineNumber;
+                if(line.startsWith("#")) {
+                    continue;
+                }
+                final String[] splitLine = line.split("\t");
+                final String contig = splitLine[0];
+                final Integer end = Integer.parseInt(splitLine[2]) + 1;
+                if(!contigLengthMap.containsKey(contig) || contigLengthMap.get(contig) < end) {
+                    contigLengthMap.put(contig, end);
+                }
+            }
+        } catch(IOException e) {
+            throw new GATKException("Unable to read genome gaps file \"" + svGenomeGapsFile + "\" line " + lineNumber + ": " + e.getMessage());
+        }
+
+        SAMFileHeader header = new SAMFileHeader();
+        header.setSortOrder(SAMFileHeader.SortOrder.coordinate);
+        SAMSequenceDictionary dict = new SAMSequenceDictionary();
+        // make up some sequence records
+        for (SortedMap.Entry<String,Integer> contigEntry : contigLengthMap.entrySet()) {
+            final String contig = contigEntry.getKey();
+            final int chromosomeSize = contigEntry.getValue();
+            SAMSequenceRecord rec = new SAMSequenceRecord(contigEntry.getKey(), chromosomeSize);
+            rec.setSequenceLength(chromosomeSize);
+            dict.addSequence(rec);
+        }
+        header.setSequenceDictionary(dict);
+        return header;
+    }
+
     private static ReadMetadata initMetadata() {
         final ReadMetadata.PartitionBounds[] partitionBounds = new ReadMetadata.PartitionBounds[3];
         partitionBounds[0] = new ReadMetadata.PartitionBounds(0, 1, 0, 10000, 9999);

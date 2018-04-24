@@ -187,6 +187,16 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
                 fullName = "sv-evidence-filter-model-file")
         public String svEvidenceFilterModelFile = "gatk-resources::/large/sv_evidence_classifier.bin";
 
+        @Argument(doc = "Path to single read 100-mer mappability file", fullName = "sv-genome-umap_s100-file")
+        public String svGenomeUmapS100File = "gatk-resources::/large/hg38_umap_s100.txt.gz";
+
+        @Argument(doc = "Path to file enumerating gaps in the reference genome", fullName = "sv-genome-gaps-file")
+        public String svGenomeGapsFile = "gatk-resources::/large/hg38_gaps.txt.gz";
+
+        @Argument(doc = "Path to file enumerating centromeres in the reference genome",
+                fullName = "sv-genome-centromeres-file")
+        public String svGenomeCentromeresFile = "gatk-resources::/large/hg38_centromeres.txt.gz";
+
         @Argument(doc = "Path to file specifying encoding of categorical variables", optional=true,
                 fullName = "sv-evidence-categorical-variables-file")
         //public String svCategoricalVariablesFile = "gatk-resources::/large/sv_evidence_categorical_variables.json";
@@ -194,7 +204,7 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
 
         @Argument(doc = "Minimum classified probability for a piece of evidence to pass xgboost evidence filter",
                 fullName = "sv-evidence-filter-threshold-probability")
-        public double svEvidenceFilterThresholdProbability = 0.172;
+        public double svEvidenceFilterThresholdProbability = 0.3;
 
         @Argument(doc = "Filter method for selecting evidence to group into SV Intervals",
                 fullName = "sv-evidence-filter-type")

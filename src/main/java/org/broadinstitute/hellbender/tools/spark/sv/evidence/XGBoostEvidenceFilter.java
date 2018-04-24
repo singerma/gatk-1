@@ -9,17 +9,16 @@ import com.google.common.collect.Lists;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.TextCigarCodec;
+import htsjdk.tribble.AbstractFeatureReader;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.*;
 import org.broadinstitute.hellbender.tools.spark.utils.IntHistogram;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import scala.Tuple2;
-import scala.tools.ant.sabbus.Break;
 
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.util.*;
 
 /**
@@ -28,7 +27,6 @@ import java.util.*;
  */
 public final class XGBoostEvidenceFilter implements Iterator<BreakpointEvidence> {
     static private final boolean useFastMathExp = true;
-    static private final boolean useClusterNumCoherent = false;
     private static final List<String> defaultEvidenceTypeOrder = Arrays.asList(
             "TemplateSizeAnomaly",
             "MateUnmapped", "InterContigPair",
@@ -54,6 +52,8 @@ public final class XGBoostEvidenceFilter implements Iterator<BreakpointEvidence>
 
     private Iterator<SVIntervalTree.Entry<List<BreakpointEvidence>>> treeItr;
     private Iterator<BreakpointEvidence> listItr;
+    private final SVIntervalTree<Double> genomeGaps;
+    private final SVIntervalTree<Double> umapS100Mappability;
 
     public XGBoostEvidenceFilter(
             final Iterator<BreakpointEvidence> evidenceItr,
@@ -63,6 +63,12 @@ public final class XGBoostEvidenceFilter implements Iterator<BreakpointEvidence>
     ) {
         this.predictor = loadPredictor(params.svEvidenceFilterModelFile);
         this.evidenceTypeMap = loadEvidenceTypeMap(params.svCategoricalVariablesFile);
+        this.genomeGaps = new SVIntervalTree<>();
+        loadGenomeIntervals(this.genomeGaps, params.svGenomeGapsFile, readMetadata);
+        loadGenomeIntervals(this.genomeGaps, params.svGenomeCentromeresFile, readMetadata);
+        this.umapS100Mappability = new SVIntervalTree<>();
+        loadGenomeIntervals(this.umapS100Mappability, params.svGenomeUmapS100File, readMetadata);
+
         this.partitionCrossingChecker = partitionCrossingChecker;
         this.coverage = readMetadata.getCoverage();
         this.thresholdProbability = params.svEvidenceFilterThresholdProbability;
@@ -81,17 +87,25 @@ public final class XGBoostEvidenceFilter implements Iterator<BreakpointEvidence>
         ObjFunction.useFastMathExp(useFastMathExp);
         try(final InputStream inputStream = getInputStream(modelFileLocation)) {
             return new Predictor(inputStream);
-        } catch(IOException e) {
+        } catch(Exception e) {
             throw new GATKException(
                     "Unable to load predictor from classifier file " + modelFileLocation + ": " + e.getMessage()
             );
         }
     }
 
-    private static InputStream getInputStream(final String fileLocation) {
-        return fileLocation.startsWith("gatk-resources::") ?
-                XGBoostEvidenceFilter.class.getResourceAsStream(fileLocation.substring(16))
-                : BucketUtils.openFile(fileLocation);
+    @VisibleForTesting
+    static InputStream getInputStream(final String fileLocation) throws IOException {
+        if(fileLocation.startsWith("gatk-resources::")) {
+            final InputStream inputStream = XGBoostEvidenceFilter.class.getResourceAsStream(fileLocation.substring(16));
+            if (AbstractFeatureReader.hasBlockCompressedExtension(fileLocation)) {
+                return IOUtils.makeZippedInputStream(new BufferedInputStream(inputStream));
+            } else {
+                return inputStream;
+            }
+        } else {
+            return BucketUtils.openFile(fileLocation);
+        }
     }
 
     @VisibleForTesting
@@ -123,6 +137,71 @@ public final class XGBoostEvidenceFilter implements Iterator<BreakpointEvidence>
             );
         }
     }
+
+
+    static void loadGenomeIntervals(final SVIntervalTree<Double> genome_intervals, final String genomeIntervalsFile,
+                                    final ReadMetadata readMetadata) {
+        boolean goodSamHeader;
+        try {
+            readMetadata.getContigID("chr1");
+            goodSamHeader = true;
+        } catch(GATKException e) {
+            goodSamHeader = false;
+        }
+        final boolean mapContigIdWithReadMetadata = goodSamHeader;
+
+        int lineNumber = -1;
+        try(final InputStream inputStream = getInputStream(genomeIntervalsFile)) {
+            final BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+            String line;
+            loop_lines:
+            while((line = reader.readLine()) != null) {
+                ++lineNumber;
+                if(line.startsWith("#")) {
+                    continue; // skip header
+                }
+                final String[] splitLine = line.split("\t");
+                if(splitLine.length < 3) {
+                    throw new GATKException("Error reading " + genomeIntervalsFile + " line " + lineNumber
+                            + ": Not enough columns to make genomic interval");
+                }
+
+                final int contig;
+                if(mapContigIdWithReadMetadata) {
+                    contig = readMetadata.getContigID(splitLine[0]);
+                } else {
+                    switch(splitLine[0]) {
+                        case "chrX":
+                            contig = 22;
+                            break;
+                        case "chrY":
+                            contig = 23;
+                            break;
+                        default:
+                            try {
+                                contig = Integer.parseInt(splitLine[0].substring(3));
+                            } catch(NumberFormatException e) {
+                                continue loop_lines;
+                            }
+                    }
+                }
+                final int begin = Integer.parseInt(splitLine[1]) + 1;
+                final int end = Integer.parseInt(splitLine[2]) + 1;
+                final SVInterval svInterval = new SVInterval(contig, begin, end);
+                final SVIntervalTree.Entry<Double> entry = genome_intervals.find(svInterval);
+                // each interval has weight 1.0 for overlap. If multiple intervals exactly coincide, just add weight.
+                if(entry == null) {
+                    genome_intervals.put(svInterval, 1.0);
+                } else {
+                    entry.setValue(entry.getValue() + 1.0);
+                }
+            }
+        } catch(IOException e) {
+            throw new GATKException("Unable to load genome intervals from file \"" + genomeIntervalsFile + "\" line "
+                                    + lineNumber + ": " + e.getMessage());
+        }
+    }
+
 
     @Override
     public boolean hasNext() {
@@ -182,9 +261,14 @@ public final class XGBoostEvidenceFilter implements Iterator<BreakpointEvidence>
         final double evidenceType = evidenceTypeMap.get(evidence.getClass().getSimpleName());
         final double mappingQuality = (double)getMappingQuality(evidence);
         final double templateSize = getTemplateSize(evidence);
+
         // calculate these similar to BreakpointDensityFilter, but always calculate full totals, never end early.
         final CoverageScaledOverlapInfo individualOverlapInfo = getIndividualOverlapInfo(evidence);
         final CoverageScaledOverlapInfo clusterOverlapInfo = getClusterOverlapInfo(evidence);
+
+        // calculate properties related to overlap of intervals on the reference genome
+        final double referenceGapOverlap = getGenomeIntervalsOverlap(evidence, genomeGaps);
+        final double umapS100 = getGenomeIntervalsOverlap(evidence, umapS100Mappability);
 
         return new EvidenceFeatures(
             new double[]{
@@ -194,7 +278,8 @@ public final class XGBoostEvidenceFilter implements Iterator<BreakpointEvidence>
                 individualOverlapInfo.coherentMappingQuality,
                 clusterOverlapInfo.numOverlap, clusterOverlapInfo.overlapMappingQuality,
                 clusterOverlapInfo.meanOverlapMappingQuality, clusterOverlapInfo.numCoherent,
-                clusterOverlapInfo.coherentMappingQuality
+                clusterOverlapInfo.coherentMappingQuality,
+                referenceGapOverlap, umapS100
             }
         );
     }
@@ -232,30 +317,6 @@ public final class XGBoostEvidenceFilter implements Iterator<BreakpointEvidence>
     }
 
     private void cacheFeatures(final BreakpointEvidence evidence) {
-        /*
-        final int evidenceMappingQuality = getMappingQuality(evidence);
-        int numOverlap = -1;
-        int overlapMappingQuality = -evidenceMappingQuality;
-        for(final Iterator<BreakpointEvidence> overlapper_itr = evidenceOverlapChecker.overlappers(evidence); overlapper_itr.hasNext();) {
-            final BreakpointEvidence overlapper = overlapper_itr.next();
-            if(overlapper == evidence) {
-                continue; // don't count self-overlap
-            }
-            numOverlap += 1;
-            overlapMappingQuality += getMappingQuality(overlapper);
-        }
-
-        int numCoherent = 0;
-        int coherentMappingQuality = 0;
-        for(final Iterator<BreakpointEvidence> coherent_itr = evidenceOverlapChecker.coherent(evidence); coherent_itr.hasNext();) {
-            final BreakpointEvidence coherent = coherent_itr.next();
-            if(coherent == evidence) {
-                continue; // don't count self-coherence
-            }
-            numCoherent += 1;
-            coherentMappingQuality += getMappingQuality(coherent);
-        }
-        */
         int numOverlap = 0;
         int overlapMappingQuality = 0;
         int numCoherent = 0;
@@ -370,11 +431,7 @@ public final class XGBoostEvidenceFilter implements Iterator<BreakpointEvidence>
         Iterator<BreakpointEvidence> overlappers(final BreakpointEvidence evidence) {
             return new OverlapperIterator(evidence, evidenceTree);
         }
-        /*
-        Iterator<BreakpointEvidence> coherent(final BreakpointEvidence evidence) {
-            return new CoherentIterator(evidence, targetIntervalTree, readMetadata, minEvidenceMapQ);
-        }
-        */
+
         Iterator<Tuple2<BreakpointEvidence, Boolean>> overlappersWithCoherence(final BreakpointEvidence evidence) {
             return new OverlapAndCoherenceIterator(evidence, evidenceTree, readMetadata, minEvidenceMapQ);
         }
@@ -579,5 +636,20 @@ public final class XGBoostEvidenceFilter implements Iterator<BreakpointEvidence>
             basesMatched = numMatched;
             referenceLength = refLength;
         }
+    }
+
+    final double getGenomeIntervalsOverlap(final BreakpointEvidence evidence,
+                                           final SVIntervalTree<Double> genomeIntervals) {
+        final SVInterval svInterval = evidence.getLocation();
+        double overlap = 0.0;
+        for(final Iterator<SVIntervalTree.Entry<Double>> overlapperItr = genomeIntervals.overlappers(svInterval);
+            overlapperItr.hasNext();) {
+            final SVIntervalTree.Entry<Double> overlapEntry = overlapperItr.next();
+            final SVInterval overlapper = overlapEntry.getInterval();
+            final double overlapLength = Double.min(svInterval.getEnd(), overlapper.getEnd())
+                    - Double.max(svInterval.getStart(), overlapper.getStart());
+            overlap += overlapEntry.getValue() * overlapLength / svInterval.getLength();
+        }
+        return overlap;
     }
 }

@@ -83,7 +83,7 @@ COPY_FASTQ=${COPY_FASTQ:-"Y"}
 # update gcloud
 {
     if [[ "${QUIET}" == "Y" ]]; then
-        gcloud components update --quiet 2> /dev
+        gcloud components update --quiet
     else
         gcloud components update
     fi

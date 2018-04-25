@@ -41,7 +41,7 @@ SV_ARGS=${*:-${SV_ARGS:-""}}
 # get appropriate ZONE for cluster
 echo "CLUSTER_INFO=\$(gcloud dataproc clusters list --project=${PROJECT_NAME} --filter='clusterName=${CLUSTER_NAME}')"
 CLUSTER_INFO=$(gcloud dataproc clusters list --project=${PROJECT_NAME} --filter="clusterName=${CLUSTER_NAME}" | tail -n 1 | tr -s ' ')
-ZONE=$(echo "${CLUSTER_INFO}" | cut -d' ' -f 4)
+ZONE=$(echo "$CLUSTER_INFO" | rev | cut -d' ' -f1 | rev)
 if [ -z "${ZONE}" ]; then
     # cluster is down.
     echo "Cluster \"${CLUSTER_NAME}\" is down. Only log and command args will be uploaded"

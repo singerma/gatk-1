@@ -38,9 +38,13 @@ fi
 # sanity 2: check if GATK jar was compiled from the current .git hash
 GATK_JAR_HASH=$(readlink ${GATK_DIR}/build/libs/gatk-spark.jar | awk 'BEGIN {FS="-g"} {print $2}' | cut -d- -f 1)
 CURRENT_GIT_HASH=$(git -C ${GATK_DIR} rev-parse --short HEAD | cut -c1-7)
-if [[ "${QUIET}" != "Y" ]] && [[ "${GATK_JAR_HASH}" != "${CURRENT_GIT_HASH}" ]]; then
+if [[ "${GATK_JAR_HASH}" != "${CURRENT_GIT_HASH}" ]]; then
     while true; do
         echo "gatk-spark.jar version (${GATK_JAR_HASH}) does not match current git commit (${CURRENT_GIT_HASH})."
+        if [ "$QUIET" == "Y" ]; then
+            echo "ERROR: Quitting because the GATK has not been built to match the current git status"
+            exit 1
+        fi
         read -p  "Run anyway? (yes/no)" yn
         case $yn in
             [Yy]*)  break

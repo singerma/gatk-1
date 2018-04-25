@@ -83,9 +83,9 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
      * @param refLoc the span of the reference bases
      * @param activeAllelesToGenotype alleles we want to ensure are scheduled for genotyping (GGA mode)
      * @param maxMnpDistance Phased substitutions separated by this distance or less are merged into MNPs.  More than
-     *                       two substitutions occuring in the same alignment block (ie the same M/X/EQ CIGAR element)
+     *                       two substitutions occurring in the same alignment block (ie the same M/X/EQ CIGAR element)
      *                       are merged until a substitution is separated from the previous one by a greater distance.
-     *                       That is, if maxMnpDistance = 1, substitutions at 10,11,12,14,15,17 are broken into a MNP
+     *                       That is, if maxMnpDistance = 1, substitutions at positions 10,11,12,14,15,17 are partitioned into a MNP
      *                       at 10-12, a MNP at 14-15, and a SNP at 17.
      * @return never {@code null} but perhaps an empty list if there is no variants to report.
      */

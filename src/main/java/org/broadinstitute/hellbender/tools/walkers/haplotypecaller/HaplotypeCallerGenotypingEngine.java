@@ -19,6 +19,7 @@ import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
@@ -87,8 +88,8 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
      * @param maxMnpDistance Phased substitutions separated by this distance or less are merged into MNPs.  More than
      *                       two substitutions occuring in the same alignment block (ie the same M/X/EQ CIGAR element)
      *                       are merged until a substitution is separated from the previous one by a greater distance.
-     *                       That is, if maxMnpDistance = 1, substitutions at 10,11,12,14,15,17 are broken into a MNP
-     *                       at 10-12, a MNP at 14-15, and a SNP at 17.
+     *                       That is, if maxMnpDistance = 1, substitutions at 10,11,12,14,15,17 are partitioned into a MNP
+     *                       at 10-12, a MNP at 14-15, and a SNP at 17.  May not be negative.
      *
      * @return                                       A CalledHaplotypes object containing a list of VC's with genotyped events and called haplotypes
      *
@@ -113,6 +114,7 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
         Utils.nonNull(activeRegionWindow, "activeRegionWindow must be non-null");
         Utils.nonNull(activeAllelesToGenotype, "activeAllelesToGenotype must be non-null");
         Utils.validateArg(refLoc.contains(activeRegionWindow), "refLoc must contain activeRegionWindow");
+        ParamUtils.isPositiveOrZero(maxMnpDistance, "maxMnpDistance may not be negative.");
 
         // update the haplotypes so we're ready to call, getting the ordered list of positions on the reference
         // that carry events among the haplotypes

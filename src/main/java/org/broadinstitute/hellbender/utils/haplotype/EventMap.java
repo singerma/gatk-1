@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 
 import java.io.Serializable;
@@ -44,7 +45,6 @@ public final class EventMap extends TreeMap<Integer, VariantContext> {
         this.ref = ref;
         this.refLoc = refLoc;
         this.sourceNameToAdd = sourceNameToAdd;
-
         processCigarForInitialEvents(maxMnpDistance);
     }
 
@@ -66,10 +66,11 @@ public final class EventMap extends TreeMap<Integer, VariantContext> {
      * @param maxMnpDistance Phased substitutions separated by this distance or less are merged into MNPs.  More than
      *                       two substitutions occuring in the same alignment block (ie the same M/X/EQ CIGAR element)
      *                       are merged until a substitution is separated from the previous one by a greater distance.
-     *                       That is, if maxMnpDistance = 1, substitutions at 10,11,12,14,15,17 are broken into a MNP
-     *                       at 10-12, a MNP at 14-15, and a SNP at 17.
+     *                       That is, if maxMnpDistance = 1, substitutions at 10,11,12,14,15,17 are partitioned into a MNP
+     *                       at 10-12, a MNP at 14-15, and a SNP at 17.  May not be negative.
      */
     protected void processCigarForInitialEvents(final int maxMnpDistance) {
+        ParamUtils.isPositiveOrZero(maxMnpDistance, "maxMnpDistance may not be negative.");
         final Cigar cigar = haplotype.getCigar();
         final byte[] alignment = haplotype.getBases();
 
@@ -364,8 +365,8 @@ public final class EventMap extends TreeMap<Integer, VariantContext> {
      * @param maxMnpDistance Phased substitutions separated by this distance or less are merged into MNPs.  More than
      *                       two substitutions occuring in the same alignment block (ie the same M/X/EQ CIGAR element)
      *                       are merged until a substitution is separated from the previous one by a greater distance.
-     *                       That is, if maxMnpDistance = 1, substitutions at 10,11,12,14,15,17 are broken into a MNP
-     *                       at 10-12, a MNP at 14-15, and a SNP at 17.
+     *                       That is, if maxMnpDistance = 1, substitutions at 10,11,12,14,15,17 are partitioned into a MNP
+     *                       at 10-12, a MNP at 14-15, and a SNP at 17.  May not be negative.
      * @return a sorted set of start positions of all events among all haplotypes
      */
     public static TreeSet<Integer> buildEventMapsForHaplotypes( final List<Haplotype> haplotypes,
@@ -373,6 +374,7 @@ public final class EventMap extends TreeMap<Integer, VariantContext> {
                                                                 final Locatable refLoc,
                                                                 final boolean debug,
                                                                 final int maxMnpDistance) {
+        ParamUtils.isPositiveOrZero(maxMnpDistance, "maxMnpDistance may not be negative.");
         // Using the cigar from each called haplotype figure out what events need to be written out in a VCF file
         final TreeSet<Integer> startPosKeySet = new TreeSet<>();
         int hapNumber = 0;

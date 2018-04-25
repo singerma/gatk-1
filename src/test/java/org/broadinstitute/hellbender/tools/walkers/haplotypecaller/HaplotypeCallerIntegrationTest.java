@@ -18,6 +18,8 @@ import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.AlleleSubsettingUtils;
+import org.broadinstitute.hellbender.tools.walkers.mutect.M2ArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2IntegrationTest;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -664,6 +666,30 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
             final int position = entry.getKey();
             Assert.assertEquals(altAllelesByPosition.get(position), entry.getValue());
         });
+    }
+
+    // test on an artificial bam with several contrived MNPs
+    // this test is basically identical to a test in {@ link Mutect2IntegrationTest}
+    @Test
+    public void testMnps() throws Exception {
+        Utils.resetRandomGenerator();
+        final File bam = new File(toolsTestDir, "mnp.bam");
+
+        for (final int maxMnpDistance : new int[] {0, 1, 2, 3, 5}) {
+            for (final String ercMode : new String[]{"GVCF", "NONE"}) {
+                final File outputVcf = createTempFile("unfiltered", ".vcf");
+
+                final List<String> args = Arrays.asList("-I", bam.getAbsolutePath(),
+                        "-R", b37_reference_20_21,
+                        "-L", "20:10019000-10022000",
+                        "-O", outputVcf.getAbsolutePath(),
+                        "-" + HaplotypeCallerArgumentCollection.MAX_MNP_DISTANCE_SHORT_NAME, Integer.toString(maxMnpDistance),
+                        "-ERC", ercMode);
+                runCommandLine(args);
+
+                Mutect2IntegrationTest.checkMnpOutput(maxMnpDistance, outputVcf);
+            }
+        }
     }
 
     @Test(dataProvider = "getContaminationCorrectionTestData")

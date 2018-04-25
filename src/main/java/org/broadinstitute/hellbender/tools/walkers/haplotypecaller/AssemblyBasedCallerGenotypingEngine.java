@@ -401,7 +401,8 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
 
             // keep track of the haplotypes that contain this particular alternate allele
             final Allele alt = call.getAlternateAllele(0);
-            final Predicate<VariantContext> hasThisAlt = vc -> vc.getStart() == call.getStart() && vc.getAlternateAlleles().contains(alt);
+            final Predicate<VariantContext> hasThisAlt = vc -> (vc.getStart() == call.getStart() && vc.getAlternateAlleles().contains(alt)) ||
+                    (Allele.SPAN_DEL.equals(alt) && vc.getStart() < call.getStart() && vc.getEnd() >= call.getStart());
             final Set<Haplotype> hapsWithAllele = calledHaplotypes.stream()
                     .filter(h -> h.getEventMap().getVariantContexts().stream().anyMatch(hasThisAlt))
                     .collect(Collectors.toCollection(HashSet<Haplotype>::new));

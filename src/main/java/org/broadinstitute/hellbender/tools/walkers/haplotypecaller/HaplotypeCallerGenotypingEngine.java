@@ -119,7 +119,7 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
         final List<Allele> noCallAlleles = GATKVariantContextUtils.noCallAlleles(ploidy);
 
         for( final int loc : startPosKeySet ) {
-            if (loc == 10093568 || loc == 10093569) {
+            if (loc == 10004094) {
                 int foo = loc;
             }
             if( loc < activeRegionWindow.getStart() || loc > activeRegionWindow.getEnd() ) {

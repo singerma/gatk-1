@@ -26,9 +26,9 @@ if [[ ${UNTRACKED_COMMIT} ]]; then
     read -p "Want to proceed anyway? (yes/no/cancel)" yn
     case $yn in
         [Yy]*)  ;;
-        [Nn]*)  exit
+        [Nn]*)  exit 1
                 ;;
-        [Cc]*)  exit
+        [Cc]*)  exit 1
                 ;;
             *)  echo "Please answer yes, no, or cancel."
                 ;;
@@ -49,7 +49,7 @@ if [[ "${GATK_JAR_HASH}" != "${CURRENT_GIT_HASH}" ]]; then
         case $yn in
             [Yy]*)  break
                     ;;
-            [Nn]*)  exit
+            [Nn]*)  exit 1
                     ;;
             *)      echo "Please answer yes or no"
                     ;;

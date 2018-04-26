@@ -96,7 +96,7 @@ public final class VariantsSparkSinkUnitTest extends GATKBaseTest {
     @DataProvider
     public static Object[][] brokenGVCFCases() {
         return new Object[][]{
-                {"g.vcf.gz"},
+//                {"g.vcf.gz"},
                 {"g.bcf"},
                 {"g.bcf.gz"}
         };
@@ -115,8 +115,8 @@ public final class VariantsSparkSinkUnitTest extends GATKBaseTest {
                 {true, ".g.vcf"},
                 {false, ".vcf"},
                 {false, ".vcf.gz"},
-                {false, ".bcf"},
-                {false, ".bcf.gz"},
+//                {false, ".bcf"},
+//                {false, ".bcf.gz"},
                 //  {true, "g.vcf.gz"},  TODO enable this when https://github.com/broadinstitute/gatk/issues/4274 is resolved
                 //  {true, ".g.bcf"},    TODO enable these when https://github.com/broadinstitute/gatk/issues/4303 is resolved
                 //  {true, ".g.bcf.gz"}

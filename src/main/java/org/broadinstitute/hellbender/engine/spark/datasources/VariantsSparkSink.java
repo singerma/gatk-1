@@ -2,6 +2,8 @@ package org.broadinstitute.hellbender.engine.spark.datasources;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
+import com.tom_e_white.squark.HtsjdkVariantsRdd;
+import com.tom_e_white.squark.HtsjdkVariantsRddStorage;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -177,29 +179,35 @@ public final class VariantsSparkSink {
             final JavaSparkContext ctx, final String outputFile, final JavaRDD<VariantContext> variants,
             final VCFHeader header, final boolean writeGvcf, final List<Integer> gqPartitions, final int defaultPloidy, final int numReducers) throws IOException {
 
-        final Configuration conf = ctx.hadoopConfiguration();
-
-        //TODO remove me when https://github.com/broadinstitute/gatk/issues/4274 and https://github.com/broadinstitute/gatk/issues/4303 are fixed
-        if (writeGvcf && (AbstractFeatureReader.hasBlockCompressedExtension(outputFile) || outputFile.endsWith(IOUtil.BCF_FILE_EXTENSION))) {
-            throw new UserException.UnimplementedFeature("It is currently not possible to write a compressed g.vcf or any g.bcf on spark.  See https://github.com/broadinstitute/gatk/issues/4274 and https://github.com/broadinstitute/gatk/issues/4303 for more details .");
+        if (outputFile.endsWith(IOUtil.BCF_FILE_EXTENSION) || outputFile.endsWith(IOUtil.BCF_FILE_EXTENSION + ".gz")) {
+            throw new UserException.UnimplementedFeature("BCF is not supported on Spark.");
         }
-
-        if (outputFile.endsWith(BGZFCodec.DEFAULT_EXTENSION) || outputFile.endsWith(".gz")) {
-            conf.setBoolean(FileOutputFormat.COMPRESS, true);
-            conf.setClass(FileOutputFormat.COMPRESS_CODEC, BGZFCodec.class, CompressionCodec.class);
-        } else {
-            conf.setBoolean(FileOutputFormat.COMPRESS, false);
-        }
-        if (writeGvcf) {
-            SparkHeaderlessVCFOutputFormat.writeGvcf(conf, gqPartitions, defaultPloidy);
-        } else {
-            SparkHeaderlessVCFOutputFormat.unsetGvcf(conf);
-        }
-
         final JavaRDD<VariantContext> sortedVariants = sortVariants(variants, header, numReducers);
-        final String outputPartsDirectory = outputFile + ".parts/";
-        saveAsShardedHadoopFiles(ctx, conf, outputPartsDirectory, sortedVariants,  header, false);
-        VCFFileMerger.mergeParts(outputPartsDirectory, outputFile, header);
+        if (!writeGvcf) {
+            HtsjdkVariantsRdd htsjdkVariantsRdd = new HtsjdkVariantsRdd(header, sortedVariants);
+            HtsjdkVariantsRddStorage.makeDefault(ctx)
+                    .write(htsjdkVariantsRdd, outputFile);
+        } else {
+            final Configuration conf = ctx.hadoopConfiguration();
+
+            //TODO remove me when https://github.com/broadinstitute/gatk/issues/4274 and https://github.com/broadinstitute/gatk/issues/4303 are fixed
+            if (writeGvcf && (AbstractFeatureReader.hasBlockCompressedExtension(outputFile) || outputFile.endsWith(IOUtil.BCF_FILE_EXTENSION))) {
+                throw new UserException.UnimplementedFeature("It is currently not possible to write a compressed g.vcf or any g.bcf on spark.  See https://github.com/broadinstitute/gatk/issues/4274 and https://github.com/broadinstitute/gatk/issues/4303 for more details .");
+            }
+
+            if (outputFile.endsWith(BGZFCodec.DEFAULT_EXTENSION) || outputFile.endsWith(".gz")) {
+                conf.setBoolean(FileOutputFormat.COMPRESS, true);
+                conf.setClass(FileOutputFormat.COMPRESS_CODEC, BGZFCodec.class, CompressionCodec.class);
+            } else {
+                conf.setBoolean(FileOutputFormat.COMPRESS, false);
+            }
+            SparkHeaderlessVCFOutputFormat.writeGvcf(conf, gqPartitions, defaultPloidy);
+
+            final String outputPartsDirectory = outputFile + ".parts/";
+            saveAsShardedHadoopFiles(ctx, conf, outputPartsDirectory, sortedVariants,  header, false);
+            VCFFileMerger.mergeParts(outputPartsDirectory, outputFile, header);
+        }
+
     }
 
     private static JavaRDD<VariantContext> sortVariants(final JavaRDD<VariantContext> variants, final VCFHeader header, final int numReducers) {

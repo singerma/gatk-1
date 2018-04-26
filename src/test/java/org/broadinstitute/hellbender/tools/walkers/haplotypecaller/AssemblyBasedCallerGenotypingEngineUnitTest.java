@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
+import com.google.common.collect.Maps;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
@@ -10,14 +11,8 @@ import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-import spire.math.All;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-
-import static org.testng.Assert.*;
+import java.util.*;
 
 public class AssemblyBasedCallerGenotypingEngineUnitTest extends GATKBaseTest {
 
@@ -116,4 +111,98 @@ public class AssemblyBasedCallerGenotypingEngineUnitTest extends GATKBaseTest {
         }
     }
 
+
+    @DataProvider(name = "getEventMapper")
+    public Object[][] getEventMapperData() {
+
+        final Haplotype refHaplotype = new Haplotype("ACTGGTCAACTAGTCAACTGGTCAACTGGTCA".getBytes());
+        refHaplotype.setEventMap(new EventMap(new HashSet<>()));
+
+        final Haplotype snpHaplotype = new Haplotype("ACTGGTCAACTGGTCAACTGGTCAACTGGTCA".getBytes());
+        final Allele refAllele = Allele.create("A", true);
+        final List<Allele> snpAlleles = Arrays.asList(refAllele, Allele.create("G"));
+        final VariantContextBuilder snpVCBuilder = new VariantContextBuilder("a", "20", 1000, 1000, snpAlleles);
+        final VariantContext snpVc = snpVCBuilder.make();
+        snpHaplotype.setEventMap(new EventMap(Arrays.asList(snpVc)));
+
+        final Haplotype snpHaplotypeNotPresentInEventsAtThisLoc = new Haplotype("ACTGGTCAACTTGTCAACTGGTCAACTGGTCA".getBytes());
+        final List<Allele> snpAllelesNotPresentInEventsAtThisLoc = Arrays.asList(refAllele, Allele.create("T"));
+        final VariantContextBuilder snpNotPresentInEventsAtThisLocVCBuilder = new VariantContextBuilder("a", "20", 1000, 1000, snpAllelesNotPresentInEventsAtThisLoc);
+        final VariantContext snpVcNotPresentInEventsAtThisLoc = snpNotPresentInEventsAtThisLocVCBuilder.make();
+        snpHaplotypeNotPresentInEventsAtThisLoc.setEventMap(new EventMap(Arrays.asList(snpVcNotPresentInEventsAtThisLoc)));
+
+        final Haplotype deletionHaplotype = new Haplotype("ACTGGTCAGGTCAACTGGTCA".getBytes());
+        final List<Allele> deletionAlleles = Arrays.asList(Allele.create("ACTGGTCAACT", true), Allele.create("A"));
+        final VariantContextBuilder deletionVCBuilder = new VariantContextBuilder("a", "20", 995, 1005, deletionAlleles);
+        final VariantContext deletionVc = deletionVCBuilder.make();
+        deletionHaplotype.setEventMap(new EventMap(Arrays.asList(deletionVc)));
+
+        final VariantContext spandDelVc = new VariantContextBuilder("a", "20", 1000, 1000, Arrays.asList(refAllele, Allele.SPAN_DEL)).make();
+
+        final VariantContext mergedSnpAndDelVC = new VariantContextBuilder("a", "20", 1000, 1000,
+                Arrays.asList(refAllele,
+                        Allele.SPAN_DEL,
+                        Allele.create("G"))).make();
+
+
+
+        final List<Object[]> tests = new ArrayList<>();
+        tests.add(new Object[]{
+                Arrays.asList(snpVc),
+                snpVc,
+                snpVc.getStart(),
+                Arrays.asList(snpHaplotype, refHaplotype),
+                Maps.asMap(new HashSet<>(snpAlleles),
+                (key) -> {
+                    if (snpAlleles.get(1).equals(key)) return Arrays.asList(snpHaplotype);
+                    return Arrays.asList(refHaplotype);
+                })
+        });
+        tests.add(new Object[]{
+                Arrays.asList(spandDelVc, snpVc),
+                mergedSnpAndDelVC,
+                mergedSnpAndDelVC.getStart(),
+                Arrays.asList(snpHaplotype, refHaplotype, deletionHaplotype),
+                Maps.asMap(new HashSet<>(mergedSnpAndDelVC.getAlleles()),
+                        (key) -> {
+                            if (snpAlleles.get(1).equals(key)) return Arrays.asList(snpHaplotype);
+                            if (Allele.SPAN_DEL.equals(key)) return Arrays.asList(deletionHaplotype);
+                            return Arrays.asList(refHaplotype);
+                        })
+        });
+        // includes a SNP haplotype not present in events at this loc (which might happen in GGA mode)
+        tests.add(new Object[]{
+                Arrays.asList(snpVc),
+                snpVc,
+                snpVc.getStart(),
+                Arrays.asList(snpHaplotype, refHaplotype, snpHaplotypeNotPresentInEventsAtThisLoc),
+                Maps.asMap(new HashSet<>(snpVc.getAlleles()),
+                        (key) -> {
+                            if (snpAlleles.get(1).equals(key)) return Arrays.asList(snpHaplotype);
+                            return Arrays.asList(refHaplotype);
+                        })
+        });
+
+
+        return tests.toArray(new Object[][]{});
+    }
+
+    @Test(dataProvider = "getEventMapper")
+    public void testGetEventMapper(final List<VariantContext> eventsAtThisLoc,
+                                   final VariantContext mergedVc,
+                                   final int loc,
+                                   final List<Haplotype> haplotypes,
+                                   final Map<Allele, List<Haplotype>> expectedEventMap) {
+        final Map<Allele, List<Haplotype>> actualEventMap = AssemblyBasedCallerGenotypingEngine.createAlleleMapper(eventsAtThisLoc, mergedVc, loc, haplotypes, new ArrayList<>());
+        Assert.assertEquals(actualEventMap.size(), expectedEventMap.size());
+        for (final Allele key : actualEventMap.keySet()) {
+            Assert.assertTrue(expectedEventMap.containsKey(key), "Got unexpected allele " + key + " with values " + actualEventMap.get(key));
+            Assert.assertEquals(actualEventMap.get(key), expectedEventMap.get(key), "Lists don't match for key " + key);
+        }
+
+        for (final Allele key : expectedEventMap.keySet()) {
+            Assert.assertTrue(actualEventMap.containsKey(key), "Didn't get back allele " + key);
+        }
+
+    }
 }

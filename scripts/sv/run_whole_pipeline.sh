@@ -48,7 +48,11 @@ eval "SV_ARGS=\"${SV_ARGS}\""
 # (erroneous?) deprecation warnings
 #NUM_WORKERS=$(gcloud compute instances list --project ${PROJECT_NAME} --filter="name ~ ${CLUSTER_NAME}-[sw].*" | grep RUNNING | wc -l)
 # this works but does not see preemptible workers
-NUM_WORKERS=$(gcloud dataproc clusters list --project ${PROJECT_NAME} --filter "clusterName = ${CLUSTER_NAME}" | tail -n 1 | awk '{print $2}')
+NUM_WORKERS=$(gcloud dataproc clusters list --project ${PROJECT_NAME} \
+                    --filter "clusterName = ${CLUSTER_NAME}" \
+                    | awk 'NR==1 { for (i=1; i<=NF; i++) { f[$i] = i } }
+                           { print $(f["WORKER_COUNT"]) + $(f["PREEMPTIBLE_WORKER_COUNT"]) }' \
+                    | tail -1)
 if [ -z "${NUM_WORKERS}" ]; then
     echo "Cluster \"${CLUSTER_NAME}\" not found"
     exit 1

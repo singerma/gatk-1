@@ -127,7 +127,7 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
             }
 
             final List<VariantContext> eventsAtThisLocWithSpanDelsReplaced =
-                    replaceSpanDels(getVCsAtThisLocation(haplotypes, loc, activeAllelesToGenotype),
+                    replaceSpanDels(getVCsAtThisLocation(haplotypes, loc, activeAllelesToGenotype, true),
                             Allele.create(ref[loc - refLoc.getStart()], true),
                             loc);
 

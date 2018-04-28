@@ -37,15 +37,9 @@ def write_reference_and_annotation_tensors(args, include_dna=True, include_annot
         raise ValueError('Unknown tensor name:', args.tensor_name, '1d maps must be in:', str(vqsr_cnn.TENSOR_MAPS_1D))
 
     record_dict = SeqIO.to_dict(SeqIO.parse(args.reference_fasta, "fasta"))
-    if os.path.splitext(args.input_vcf)[-1].lower() == '.gz':
-        vcf_reader = vcf.Reader(open(args.input_vcf, 'rb'))
-    else:
-        vcf_reader = vcf.Reader(open(args.input_vcf, 'r'))
 
-    if os.path.splitext(args.train_vcf)[-1].lower() == '.gz':
-        vcf_ram = vcf.Reader(open(args.train_vcf, 'rb'))
-    else:
-        vcf_ram = vcf.Reader(open(args.train_vcf, 'r'))
+    vcf_reader = get_vcf_reader(args.input_vcf)
+    vcf_ram = get_vcf_reader(args.train_vcf)
 
     bed_dict = bed_file_to_dict(args.bed_file)
     stats = Counter()
@@ -134,8 +128,8 @@ def write_read_and_annotation_tensors(args, include_annotations=True, pileup=Fal
     samfile = pysam.AlignmentFile(args.bam_file, "rb")
     bed_dict = bed_file_to_dict(args.bed_file)
     record_dict = SeqIO.to_dict(SeqIO.parse(args.reference_fasta, "fasta"))
-    vcf_reader = vcf.Reader(open(args.input_vcf, 'r'))
-    vcf_ram = vcf.Reader(open(args.train_vcf, 'rb'))
+    vcf_reader = get_vcf_reader(args.input_vcf)
+    vcf_ram = get_vcf_reader(args.train_vcf)
 
     if args.chrom:
         variants = vcf_reader.fetch(args.chrom, args.start_pos, args.end_pos)
@@ -712,6 +706,7 @@ def get_true_label(allele, variant, bed_dict, truth_vcf, stats):
             NOT_INDEL if variant is indel and not in truth vcf
     '''
     in_bed = in_bed_file(bed_dict, variant.CHROM, variant.POS)
+
     if allele_in_vcf(allele, variant, truth_vcf) and in_bed:
         class_prefix = ''
     elif in_bed:
@@ -815,9 +810,14 @@ def bed_file_to_dict(bed_file):
 
 
 def in_bed_file(bed_dict, contig, pos):
-    # Exclusive
+
+    if not contig in bed_dict:
+        return False
+
     lows = bed_dict[contig][0]
     ups = bed_dict[contig][1]
+
+    # Half open interval [#,#)
     return np.any((lows <= pos) & (pos < ups))
 
 
@@ -832,7 +832,14 @@ def allele_in_vcf(allele, variant, vcf_ram):
     Returns
         variant if it is found otherwise None
     '''
-    variants = vcf_ram.fetch(variant.CHROM, variant.POS-1, variant.POS)
+    if not variant.CHROM in vcf_ram.contigs:
+        return None
+
+    try:
+        variants = vcf_ram.fetch(variant.CHROM, variant.POS-1, variant.POS)
+    except ValueError as e:
+        print('catching value error on fetch')
+        return None
 
     for v in variants:
         if v.CHROM == variant.CHROM and v.POS == variant.POS and allele in v.ALT:
@@ -1144,6 +1151,12 @@ def get_train_valid_test_paths(args):
 def plain_name(full_name):
     name = os.path.basename(full_name)
     return name.split('.')[0]
+
+def get_vcf_reader(my_vcf):
+    if os.path.splitext(my_vcf)[-1].lower() == '.gz':
+        return vcf.Reader(open(my_vcf, 'rb'))
+    else:
+        return vcf.Reader(open(my_vcf, 'r'))
 
 
 # Back to the top!

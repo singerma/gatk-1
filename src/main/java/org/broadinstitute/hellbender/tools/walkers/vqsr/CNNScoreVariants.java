@@ -118,7 +118,7 @@ public class CNNScoreVariants extends VariantWalker {
     private static final int ALT_INDEX = 3;
     private static final int KEY_INDEX = 4;
     private static final int FIFO_STRING_INITIAL_CAPACITY = 1024;
-    private static final int MAX_READ_BATCH = 2;
+    private static final int MAX_READ_BATCH = 128000;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,

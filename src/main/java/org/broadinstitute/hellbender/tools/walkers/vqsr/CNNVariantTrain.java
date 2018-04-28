@@ -38,14 +38,14 @@ import java.util.List;
  * <pre>
  * gatk CNNVariantTrain \
  *   -tensor-type reference \
- *   -input-tensors-dir my_tensor_folder \
+ *   -input-tensor-dir my_tensor_folder \
  *   -model-name my_1d_model
  * </pre>
  *
  * <h4>Train a 2D CNN on Read Tensors</h4>
  * <pre>
  * gatk CNNVariantTrain \
- *   -input-tensors-dir my_tensor_folder \
+ *   -input-tensor-dir my_tensor_folder \
  *   -tensor-type read-tensor \
  *   -model-name my_2d_model
  * </pre>

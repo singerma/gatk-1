@@ -5,6 +5,7 @@ import re
 
 TENSOR_MAPS_2D = ['read_tensor']
 TENSOR_MAPS_1D = ['reference']
+# noinspection PyInterpreter
 TENSOR_SUFFIX = '.hd5'
 
 DNA_SYMBOLS = {'A':0, 'C':1, 'G':2, 'T':3}

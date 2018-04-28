@@ -49,7 +49,7 @@ import java.util.List;
  *   -V input.vcf.gz \
  *   -truth-vcf platinum-genomes.vcf \
  *   -truth-bed platinum-confident-region.bed \
- *   -tensor-name reference \
+ *   -tensor-type reference \
  *   -output-tensor-dir my-tensor-folder
  * </pre>
  *
@@ -60,7 +60,7 @@ import java.util.List;
  *   -V input.vcf.gz \
  *   -truth-vcf platinum-genomes.vcf \
  *   -truth-bed platinum-confident-region.bed \
- *   -tensor-name read_tensor \
+ *   -tensor-type read_tensor \
  *   -bam-file input.bam \
  *   -output-tensor-dir my-tensor-folder
  * </pre>

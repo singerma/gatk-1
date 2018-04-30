@@ -141,11 +141,11 @@ public class CNNScoreVariants extends VariantWalker {
     private boolean filterSymbolicAndSV = false;
 
     @Advanced
-    @Argument(fullName = "inference-batch-size", shortName = "inference-batch-size", doc = "Size of batches for python to do inference on.", minValue = 1, maxValue = 4096, optional = true)
+    @Argument(fullName = "inference-batch-size", shortName = "inference-batch-size", doc = "Size of batches for python to do inference on.", minValue = 1, maxValue = 1e7, optional = true)
     private int inferenceBatchSize = 256;
 
     @Advanced
-    @Argument(fullName = "transfer-batch-size", shortName = "transfer-batch-size", doc = "Size of data to queue for python streaming.", minValue = 1, maxValue = 8192, optional = true)
+    @Argument(fullName = "transfer-batch-size", shortName = "transfer-batch-size", doc = "Size of data to queue for python streaming.", minValue = 1, maxValue = 1e7, optional = true)
     private int transferBatchSize = 512;
 
     @Advanced

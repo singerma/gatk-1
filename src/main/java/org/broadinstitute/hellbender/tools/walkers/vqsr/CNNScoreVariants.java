@@ -149,6 +149,14 @@ public class CNNScoreVariants extends VariantWalker {
     private int transferBatchSize = 512;
 
     @Advanced
+    @Argument(fullName = "tf-intra-threads", shortName = "intra", doc = "Number of threads used for intra op parallelism in TensorFlow.", minValue = 0, optional = true)
+    private int tfIntraThreads = 0;
+
+    @Advanced
+    @Argument(fullName = "tf-inter-threads", shortName = "inter", doc = "Number of threads used for inter op parallelism in TensorFlow.", minValue = 0, optional = true)
+    private int tfInterThreads = 0;
+
+    @Advanced
     @Argument(fullName = "output-tensor-dir", shortName = "output-tensor-dir", doc = "Optional directory where tensors can be saved for debugging or visualization.", optional = true)
     private String outputTensorsDir = "";
 
@@ -255,6 +263,8 @@ public class CNNScoreVariants extends VariantWalker {
             }
             pythonExecutor.sendSynchronousCommand(String.format("tempFile = open('%s', 'w+')" + NL, scoreFile.getAbsolutePath()));
             pythonExecutor.sendSynchronousCommand("import vqsr_cnn" + NL);
+            pythonExecutor.sendSynchronousCommand("from keras import backend" + NL);
+            pythonExecutor.sendSynchronousCommand(String.format("backend.set_session(backend.tf.Session(config=backend.tf.ConfigProto(intra_op_parallelism_threads=%d, inter_op_parallelism_threads=%d)))" + NL, tfIntraThreads, tfInterThreads));
 
             String getArgsAndModel;
             if (weights != null && architecture != null) {

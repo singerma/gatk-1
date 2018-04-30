@@ -135,7 +135,7 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
                 logger.info("merging multiple events");
             }
 
-            VariantContext mergedVC = AssemblyBasedCallerUtils.makeMergedVariantContext(eventsAtThisLocWithSpanDelsReplaced, new SimpleInterval(refLoc.getContig(), loc, loc));
+            VariantContext mergedVC = AssemblyBasedCallerUtils.makeMergedVariantContext(eventsAtThisLocWithSpanDelsReplaced);
 
             if( mergedVC == null ) {
                 continue;

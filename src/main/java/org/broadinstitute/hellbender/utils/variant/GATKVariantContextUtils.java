@@ -19,8 +19,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
 import org.broadinstitute.hellbender.utils.*;
-import org.broadinstitute.hellbender.utils.collections.Permutation;
-import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.io.File;
@@ -923,7 +921,7 @@ public final class GATKVariantContextUtils {
 
         final Map<Allele, Allele> map = new LinkedHashMap<>();
         for ( final Allele a : oneVC.getAlternateAlleles() ) {
-            if ( isUsableAlternateAllele(a) ) {
+            if ( isNonSymbolicExtendableAllele(a) ) {
                 Allele extended = Allele.extend(a, extraBases);
                 for ( final Allele b : currentAlleles )
                     if ( extended.equals(b) )
@@ -937,7 +935,7 @@ public final class GATKVariantContextUtils {
         return map;
     }
 
-    private static boolean isUsableAlternateAllele(final Allele allele) {
+    private static boolean isNonSymbolicExtendableAllele(final Allele allele) {
         return ! (allele.isReference() || allele.isSymbolic() || allele.equals(Allele.SPAN_DEL));
     }
 

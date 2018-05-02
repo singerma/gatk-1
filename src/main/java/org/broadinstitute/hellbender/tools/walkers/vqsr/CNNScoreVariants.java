@@ -420,7 +420,11 @@ public class CNNScoreVariants extends VariantWalker {
                 inferenceBatchSize,
                 outputTensorsDir) + NL;
         pythonExecutor.sendAsynchronousCommand(pythonCommand);
+        pythonExecutor.sendAsynchronousCommand("backend.clear_session()" + NL);
+        pythonExecutor.sendAsynchronousCommand("backend.get_session().close()" + NL);
+        pythonExecutor.sendAsynchronousCommand("backend.set_session(backend.tf.Session(config=cfg))" + NL);
         asyncWriter.startAsynchronousBatchWrite(batchList);
+
     }
 
 

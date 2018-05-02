@@ -24,8 +24,8 @@ def run():
         train_on_reference_tensors_and_annotations(args)
     elif 'train_on_read_tensors_and_annotations' == args.mode:
         train_on_read_tensors_and_annotations(args)
-    elif 'train_tiny_model_on_read_tensors_and_annotations' == args.mode:
-        train_tiny_model_on_read_tensors_and_annotations(args)
+    elif 'train_args_model_on_read_tensors_and_annotations' == args.mode:
+        train_args_model_on_read_tensors_and_annotations(args)
     elif 'train_small_model_on_read_tensors_and_annotations' == args.mode:
         train_small_model_on_read_tensors_and_annotations(args)
     else:
@@ -254,7 +254,7 @@ def train_on_read_tensors_and_annotations(args):
                                     prefix=args.image_dir, batch_size=args.batch_size)
 
 
-def train_tiny_model_on_read_tensors_and_annotations(args):
+def train_args_model_on_read_tensors_and_annotations(args):
     '''Trains a reference, read, and annotation CNN architecture on tensors at the supplied data directory.
 
     This architecture looks at reads, read flags, reference sequence, and variant annotations.
@@ -273,7 +273,7 @@ def train_tiny_model_on_read_tensors_and_annotations(args):
     generate_valid = tensor_generator_from_label_dirs_and_args(args, valid_paths)
 
     weight_path = vqsr_cnn.weight_path_from_args(args)
-    model = vqsr_cnn.build_tiny_2d_annotation_model(args)
+    model = vqsr_cnn.build_2d_annotation_model_from_args(args)
     model = vqsr_cnn.train_model_from_generators(args, model, generate_train, generate_valid, weight_path)
 
     test = load_tensors_and_annotations_from_class_dirs(args, test_paths, per_class_max=args.samples)

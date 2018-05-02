@@ -12,6 +12,8 @@ import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
+
 
 /**
  * Train a Convolutional Neural Network (CNN) for filtering variants.
@@ -66,7 +68,7 @@ public class CNNVariantTrain extends CommandLineProgram {
     @Argument(fullName = "output-dir", shortName = "output-dir", doc = "Directory where models will be saved, defaults to current working directory.", optional = true)
     private String outputDir = "./";
 
-    @Argument(fullName = "tensor-type", shortName = "tensor-type", doc = "Name of the tensors to generate, reference for 1D reference tensors and read_tensor for 2D tensors.", optional = true)
+    @Argument(fullName = "tensor-type", shortName = "tensor-type", doc = "Type of tensors to use as input reference for 1D reference tensors and read_tensor for 2D tensors.", optional = true)
     private TensorType tensorType = TensorType.reference;
 
     @Argument(fullName = "model-name", shortName = "model-name", doc = "Name of the model to be trained.", optional = true)
@@ -83,6 +85,42 @@ public class CNNVariantTrain extends CommandLineProgram {
 
     @Argument(fullName = "image-dir", shortName = "image-dir", doc = "Path where plots and figures are saved.", optional = true)
     private String imageDir;
+
+    @Argument(fullName = "conv-width", shortName = "conv-width", doc = "Width of convolution kernels", optional = true)
+    private int convWidth = 5;
+
+    @Argument(fullName = "conv-height", shortName = "conv-height", doc = "Height of convolution kernels", optional = true)
+    private int convHeight = 5;
+
+    @Argument(fullName = "conv-dropout", shortName = "conv-dropout", doc = "Dropout rate in convolution layers", optional = true)
+    private float convDropout = 0.0f;
+
+    @Argument(fullName = "conv-batch-normalize", shortName = "conv-batch-normalize", doc = "Batch normalize convolution layers", optional = true)
+    private boolean convBatchNormalize = false;
+
+    @Argument(fullName = "conv-layers", shortName = "conv-layers", doc = "List of number of filters to use in each convolutional layer", optional = true)
+    private List<Integer> convLayers = new ArrayList<Integer>(Arrays.asList(128, 96, 64, 48));
+
+    @Argument(fullName = "padding", shortName = "padding", doc = "Padding for convolution layers, valid or same", optional = true)
+    private String padding = "valid";
+
+    @Argument(fullName = "spatial-dropout", shortName = "spatial-dropout", doc = "Spatial dropout on convolution layers", optional = true)
+    private boolean spatialDropout = false;
+
+    @Argument(fullName = "fc-layers", shortName = "fc-layers", doc = "List of number of filters to use in each fully-connected layer", optional = true)
+    private List<Integer> fcLayers = new ArrayList<Integer>(Arrays.asList(32));
+
+    @Argument(fullName = "fc-dropout", shortName = "fc-dropout", doc = "Dropout rate in fully-connected layers", optional = true)
+    private float fcDropout = 0.0f;
+
+    @Argument(fullName = "fc-batch-normalize", shortName = "fc-batch-normalize", doc = "Batch normalize fully-connected layers", optional = true)
+    private boolean fcBatchNormalize = false;
+
+    @Argument(fullName = "annotation-units", shortName = "annotation-units", doc = "Number of units connected to the annotation input layer", optional = true)
+    private int annotationUnits = 16;
+
+    @Argument(fullName = "annotation-shortcut", shortName = "annotation-shortcut", doc = "Shortcut connections on the annotation layers.", optional = true)
+    private boolean annotationShortcut = false;
 
     @Advanced
     @Argument(fullName = "channels-last", shortName = "channels-last", doc = "Store the channels in the last axis of tensors, tensorflow->true, theano->false", optional = true)
@@ -104,30 +142,64 @@ public class CNNVariantTrain extends CommandLineProgram {
     @Override
     protected Object doWork() {
         final Resource pythonScriptResource = new Resource("training.py", FilterVariantTranches.class);
+
+
         List<String> arguments = new ArrayList<>(Arrays.asList(
                 "--data_dir", inputTensorDir,
                 "--output_dir", outputDir,
                 "--tensor_name", tensorType.name(),
                 "--annotation_set", annotationSet,
+                "--conv_width", Integer.toString(convWidth),
+                "--conv_height", Integer.toString(convHeight),
+                "--conv_dropout", Float.toString(convDropout),
+                "--padding", padding,
+                "--fc_dropout", Float.toString(fcDropout),
+                "--annotation_units", Integer.toString(annotationUnits),
                 "--epochs", Integer.toString(epochs),
                 "--training_steps", Integer.toString(trainingSteps),
                 "--validation_steps", Integer.toString(validationSteps),
                 "--id", modelName));
 
+        // Add list arguments
+        arguments.add("--conv_layers");
+        for(Integer cl : convLayers){
+            arguments.add(Integer.toString(cl));
+        }
+        arguments.add("--fc_layers");
+        for(Integer fl : fcLayers){
+            arguments.add(Integer.toString(fl));
+        }
+
+        // Add boolean arguments
         if(channelsLast){
             arguments.add("--channels_last");
         } else {
             arguments.add("--channels_first");
         }
+        if(convBatchNormalize){
+            arguments.add("--conv_batch_normalize");
+        }
+        if(fcBatchNormalize){
+            arguments.add("--fc_batch_normalize");
+        }
+        if(spatialDropout){
+            arguments.add("--spatial_dropout");
+        }
+        if(annotationShortcut){
+            arguments.add("--annotation_shortcut");
+        }
+
+
 
         if(imageDir != null){
             arguments.addAll(Arrays.asList("--image_dir", imageDir));
         }
 
+
         if (tensorType == TensorType.reference) {
             arguments.addAll(Arrays.asList("--mode", "train_on_reference_tensors_and_annotations"));
         } else if (tensorType == TensorType.read_tensor) {
-            arguments.addAll(Arrays.asList("--mode", "train_small_model_on_read_tensors_and_annotations"));
+            arguments.addAll(Arrays.asList("--mode", "train_args_model_on_read_tensors_and_annotations"));
         } else {
             throw new GATKException("Unknown tensor mapping mode:"+ tensorType.name());
         }

@@ -137,7 +137,7 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
                 continue;
             }
 
-            final Map<Allele, List<Haplotype>> alleleMapper = createAlleleMapper(eventsAtThisLocWithSpanDelsReplaced, mergedVC, loc, haplotypes, activeAllelesToGenotype);
+            final Map<Allele, List<Haplotype>> alleleMapper = createAlleleMapper(mergedVC, loc, haplotypes, activeAllelesToGenotype);
 
             if( configuration.debug && logger != null ) {
                 logger.info("Genotyping event at " + loc + " with alleles = " + mergedVC.getAlleles());

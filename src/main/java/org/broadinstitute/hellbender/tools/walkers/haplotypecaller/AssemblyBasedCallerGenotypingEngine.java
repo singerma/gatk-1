@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import htsjdk.variant.variantcontext.*;
 import org.apache.commons.lang3.tuple.Pair;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AFCalculatorProvider;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -229,17 +228,15 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
      * Returns a mapping from Allele in the mergedVC, which represents all of the alleles being genotyped at loc,
      * to a list of Haplotypes that support that allele. If the mergedVC includes a spanning deletion allele, all
      * haplotypes that support spanning deletions will be assigned to that allele in the map.
-     * @param eventsAtThisLoc The list of variant contexts active at the current location. Can include spanning deletions.
      * @param mergedVC The merged variant context for the locus, which includes all active alternate alleles merged to a single reference allele
      * @param loc The active locus being genotyped
      * @param haplotypes Haplotypes for the current active region
      * @return
      */
-    protected static Map<Allele, List<Haplotype>> createAlleleMapper(final List<VariantContext> eventsAtThisLoc,
-                                                                     final VariantContext mergedVC,
+    protected static Map<Allele, List<Haplotype>> createAlleleMapper(final VariantContext mergedVC,
                                                                      final int loc,
                                                                      final List<Haplotype> haplotypes) {
-        return createAlleleMapper(eventsAtThisLoc, mergedVC, loc, haplotypes, null);
+        return createAlleleMapper(mergedVC, loc, haplotypes, null);
     }
 
     /**
@@ -248,21 +245,16 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
      * spanning events that do not start at this location are included only if they match one of the given alleles, a
      * necessary check for the desired behavior of HaplotypeCaller's genotype given alleles mode. Otherwise, if the mergedVC
      * includes a spanning deletion allele, all haplotypes that support spanning deletions will be assigned to that allele in the map.
-     * @param eventsAtThisLoc The list of variant contexts active at the current location. Can include spanning deletions.
      * @param mergedVC The merged variant context for the locus, which includes all active alternate alleles merged to a single reference allele
      * @param loc The active locus being genotyped
      * @param haplotypes Haplotypes for the current active region
      * @param activeAllelesToGenotype Given alleles being genotyped in the active region, if running in GGA mode; can be null or empty otherwise
      * @return
      */
-    protected static Map<Allele, List<Haplotype>> createAlleleMapper(final List<VariantContext> eventsAtThisLoc,
-                                                                     final VariantContext mergedVC,
+    protected static Map<Allele, List<Haplotype>> createAlleleMapper(final VariantContext mergedVC,
                                                                      final int loc,
                                                                      final List<Haplotype> haplotypes,
                                                                      final List<VariantContext> activeAllelesToGenotype) {
-        Utils.validateArg(haplotypes.size() > eventsAtThisLoc.size(), "expected haplotypes.size() >= eventsAtThisLoc.size() + 1");
-        Utils.validateArg(eventsAtThisLoc.stream().mapToInt(VariantContext::getStart).allMatch(i -> i == loc),
-                "Can't create an AlleleMapper for events with different start positions");
 
         final Map<Allele, List<Haplotype>> result = new LinkedHashMap<>();
 

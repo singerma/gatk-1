@@ -312,20 +312,14 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
                     if (activeAllelesToGenotype != null && activeAllelesToGenotype.size() > 0) {
                         // in HC GGA mode we need to check to make sure that spanning deletion
                         // events actually match one of the alleles we were given to genotype
-                        for (VariantContext givenVC : activeAllelesToGenotype) {
-                            if (givenVC.getStart() == spanningEvent.getStart() && givenVC.getReference().equals(spanningEvent.getReference())) {
-                                for (Allele a : spanningEvent.getAlternateAlleles()) {
-                                    if (givenVC.hasAlternateAllele(a)) {
-                                        if (! result.containsKey(Allele.SPAN_DEL)) {
-                                            result.put(Allele.SPAN_DEL, new ArrayList<>());
-                                        }
-                                        result.get(Allele.SPAN_DEL).add(h);
-                                        break;
-                                    }
-                                }
+                        VariantContext matchingGivenVc = findMatchingGivenAllele(activeAllelesToGenotype, spanningEvent);
+                        if (matchingGivenVc != null) {
+                            if (!result.containsKey(Allele.SPAN_DEL)) {
+                                result.put(Allele.SPAN_DEL, new ArrayList<>());
                             }
-
+                            result.get(Allele.SPAN_DEL).add(h);
                         }
+
                     } else {
                         if (! result.containsKey(Allele.SPAN_DEL)) {
                             result.put(Allele.SPAN_DEL, new ArrayList<>());
@@ -341,6 +335,20 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
             }
         }
         return result;
+    }
+
+    private static VariantContext findMatchingGivenAllele(final List<VariantContext> activeAllelesToGenotype, final VariantContext spanningEvent) {
+        for (VariantContext givenVC : activeAllelesToGenotype) {
+            if (givenVC.getStart() == spanningEvent.getStart() && givenVC.getReference().equals(spanningEvent.getReference())) {
+                for (Allele a : spanningEvent.getAlternateAlleles()) {
+                    if (givenVC.hasAlternateAllele(a)) {
+                        return givenVC;
+                    }
+                }
+            }
+
+        }
+        return null;
     }
 
     // Builds the read-likelihoods collection to use for annotation considering user arguments and the collection

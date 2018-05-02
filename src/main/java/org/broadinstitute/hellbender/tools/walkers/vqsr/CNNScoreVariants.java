@@ -266,9 +266,9 @@ public class CNNScoreVariants extends VariantWalker {
             pythonExecutor.sendSynchronousCommand("import vqsr_cnn" + NL);
             pythonExecutor.sendSynchronousCommand("from keras import backend" + NL);
             pythonExecutor.sendSynchronousCommand(String.format("backend.set_session(backend.tf.Session(config=backend.tf.ConfigProto(intra_op_parallelism_threads=%d, inter_op_parallelism_threads=%d)))" + NL, tfIntraThreads, tfInterThreads));
-            pythonExecutor.sendSynchronousCommand("cfg = backend.tf.ConfigProto()");
-            pythonExecutor.sendSynchronousCommand("cfg.gpu_options.allow_growth = True");
-            pythonExecutor.sendSynchronousCommand("backend.set_session(backend.tf.Session(config=cfg))");
+            pythonExecutor.sendSynchronousCommand("cfg = backend.tf.ConfigProto()" + NL);
+            pythonExecutor.sendSynchronousCommand("cfg.gpu_options.allow_growth = True" + NL);
+            pythonExecutor.sendSynchronousCommand("backend.set_session(backend.tf.Session(config=cfg))" + NL);
 
             String getArgsAndModel;
             if (weights != null && architecture != null) {

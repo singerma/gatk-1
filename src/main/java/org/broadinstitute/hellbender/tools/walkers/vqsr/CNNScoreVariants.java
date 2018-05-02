@@ -261,7 +261,7 @@ public class CNNScoreVariants extends VariantWalker {
             } else {
                 logger.info("Saving temp file from python:" + scoreFile.getAbsolutePath());
             }
-            
+
             pythonExecutor.sendSynchronousCommand(String.format("tempFile = open('%s', 'w+')" + NL, scoreFile.getAbsolutePath()));
             pythonExecutor.sendSynchronousCommand("import vqsr_cnn" + NL);
             pythonExecutor.sendSynchronousCommand("from keras import backend" + NL);

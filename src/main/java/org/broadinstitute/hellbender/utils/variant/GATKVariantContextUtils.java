@@ -912,7 +912,7 @@ public final class GATKVariantContextUtils {
      * @param currentAlleles     the list of alleles already created
      * @return a non-null mapping of original alleles to new (extended) ones
      */
-    private static Map<Allele, Allele> createAlleleMapping(final Allele refAllele,
+    public static Map<Allele, Allele> createAlleleMapping(final Allele refAllele,
                                                            final VariantContext oneVC,
                                                            final Collection<Allele> currentAlleles) {
         final Allele myRef = oneVC.getReference();

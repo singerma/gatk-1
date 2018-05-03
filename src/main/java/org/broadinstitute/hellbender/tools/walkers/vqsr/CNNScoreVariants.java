@@ -120,6 +120,7 @@ public class CNNScoreVariants extends VariantWalker {
     private static final int FIFO_STRING_INITIAL_CAPACITY = 1024;
     private static final int MAX_READ_BATCH = 128000;
 
+
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc = "Output file")
@@ -262,6 +263,7 @@ public class CNNScoreVariants extends VariantWalker {
                 logger.info("Saving temp file from python:" + scoreFile.getAbsolutePath());
             }
 
+
             pythonExecutor.sendSynchronousCommand(String.format("tempFile = open('%s', 'w+')" + NL, scoreFile.getAbsolutePath()));
             pythonExecutor.sendSynchronousCommand("import vqsr_cnn" + NL);
             pythonExecutor.sendSynchronousCommand("from keras import backend" + NL);
@@ -321,7 +323,7 @@ public class CNNScoreVariants extends VariantWalker {
         if (curBatchSize == transferBatchSize) {
             if (waitforBatchCompletion == true) {
                 // wait for the last batch to complete before we start a new one
-                asyncWriter.waitForPreviousBatchCompletion(1, TimeUnit.MINUTES);
+                asyncWriter.waitForPreviousBatchCompletion(3, TimeUnit.MINUTES);
                 waitforBatchCompletion = false;
                 pythonExecutor.getAccumulatedOutput();
             }
@@ -358,7 +360,14 @@ public class CNNScoreVariants extends VariantWalker {
     private String GATKReadToString(GATKRead read) {
         StringBuilder sb = new StringBuilder(FIFO_STRING_INITIAL_CAPACITY);
         sb.append(read.getBasesString() + "\t");
-        sb.append(baseQualityBytesToString(read.getBaseQualities()) + "\t");
+
+        //sb.append(baseQualityBytesToString(read.getBaseQualities()) + "\t");
+        byte[] qualities = read.getBaseQualities();
+        for (int i = 0; i < qualities.length - 1; i++) {
+            sb.append(Integer.toString(qualities[i]) + ",");
+        }
+        sb.append(Integer.toString(qualities[qualities.length - 1]) + "\t");
+
         sb.append(read.getCigar().toString() + "\t");
         sb.append(read.isReverseStrand() + "\t");
         sb.append((read.isPaired() ? read.mateIsReverseStrand() : "false") + "\t");
@@ -397,12 +406,12 @@ public class CNNScoreVariants extends VariantWalker {
     @Override
     public Object onTraversalSuccess() {
         if (waitforBatchCompletion) {
-            asyncWriter.waitForPreviousBatchCompletion(1, TimeUnit.MINUTES);
+            asyncWriter.waitForPreviousBatchCompletion(3, TimeUnit.MINUTES);
             pythonExecutor.getAccumulatedOutput();
         }
         if (curBatchSize > 0) {
             executePythonCommand();
-            asyncWriter.waitForPreviousBatchCompletion(1, TimeUnit.MINUTES);
+            asyncWriter.waitForPreviousBatchCompletion(3, TimeUnit.MINUTES);
             pythonExecutor.getAccumulatedOutput();
         }
 

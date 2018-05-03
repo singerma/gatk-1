@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.tools.funcotator.DataSourceFuncotationFacto
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotator;
 import org.broadinstitute.hellbender.tools.funcotator.OutputRenderer;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.DataSourceUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.*;
@@ -180,11 +181,14 @@ public class VcfOutputRenderer extends OutputRenderer {
 
     /**
      * Creates a {@link String} containing the field names from our {@link VcfOutputRenderer#dataSourceFactories} suitable for putting in the VCF header.
+     *
+     * Gencode annotations are put first and then the rest.
+     *
      * @param dataSourceFactories A {@link List} of {@link DataSourceFuncotationFactory} objects from which to pull field names.
      * @return A {@link String} containing the field names from our {@link VcfOutputRenderer#dataSourceFactories} suitable for putting in the VCF header.
      */
     private static String getDataSourceFieldNamesForHeader(final List<DataSourceFuncotationFactory> dataSourceFactories) {
-        return dataSourceFactories.stream()
+        return dataSourceFactories.stream().sorted(DataSourceUtils::datasourceComparator)
                         .map(DataSourceFuncotationFactory::getSupportedFuncotationFields)
                         .flatMap(LinkedHashSet::stream)
                         .map(Object::toString).collect(Collectors.joining(HEADER_LISTED_FIELD_DELIMITER));

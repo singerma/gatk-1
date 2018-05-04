@@ -283,9 +283,9 @@ public class Funcotator extends VariantWalker {
     @Argument(
             fullName = FuncotatorArgumentDefinitions.ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_LONG_NAME,
             optional = true,
-            doc = "Allow for the HG19 Reference version of GENCODE to match with B37 Contig names.  (May create erroneous annotations in some contigs where B37 != HG19)."
+            doc = "Allow for the HG19 Reference version of GENCODE (or any other datasource) to match with B37 Contig names.  (May create erroneous annotations in some contigs where B37 != HG19)."
     )
-    protected boolean allowHg19GencodeContigNamesWithB37 = true;
+    protected boolean allowHg19ContigNamesWithB37 = true;
 
     //==================================================================================================================
 
@@ -356,7 +356,7 @@ public class Funcotator extends VariantWalker {
         }
 
         // Check for reference version (in)compatibility:
-        if ( allowHg19GencodeContigNamesWithB37 &&
+        if ( allowHg19ContigNamesWithB37 &&
              referenceVersion.equals(FuncotatorArgumentDefinitions.HG19_REFERENCE_VERSION_STRING) ) {
             // NOTE AND WARNING:
             // hg19 is from ucsc. b37 is from the genome reference consortium.
@@ -450,7 +450,7 @@ public class Funcotator extends VariantWalker {
         VariantContext variantContextFixedContigForDataSources = variant;
 
         // Check to see if we need to query with a different reference convention (i.e. "chr1" vs "1").
-        if (allowHg19GencodeContigNamesWithB37 && inputReferenceIsB37) {
+        if (allowHg19ContigNamesWithB37 && inputReferenceIsB37) {
             final VariantContextBuilder variantContextBuilderForFixedContigForDataSources = new VariantContextBuilder(variant);
 
             // Construct a new contig and new interval with no "chr" in front of it:
@@ -464,7 +464,7 @@ public class Funcotator extends VariantWalker {
                 @SuppressWarnings("unchecked")
                 final List<Feature> featureList = (List<Feature>)featureContext.getValues(featureInput, hg19Interval);
 
-                //TODO: Clean this up, since it is a bit sloppy to essentially grab both hg19 and b37 ref info
+                // TODO: This is a little sloppy, since it checks every datasource twice.  Once for hg19 contig names and once for b37 contig names.
                 featureList.addAll(featureContext.getValues(featureInput));
                 featureSourceMap.put( featureInput.getName(), featureList);
             }

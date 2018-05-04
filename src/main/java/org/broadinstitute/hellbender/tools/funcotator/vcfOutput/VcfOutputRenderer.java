@@ -5,6 +5,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
+import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.tools.funcotator.DataSourceFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotator;
@@ -130,7 +131,7 @@ public class VcfOutputRenderer extends OutputRenderer {
             funcotatorAnnotationStringBuilder.append(
                     funcotations.stream()
                             .filter(f -> f.getAltAllele().equals(altAllele) )
-                            .map(f -> f.serializeToVcfString(manualAnnotationSerializedString))
+                            .map(f -> retrieveSanitizedFuncotation(f, manualAnnotationSerializedString))
                             .collect(Collectors.joining(FIELD_DELIMITER))
             );
             funcotatorAnnotationStringBuilder.append(",");
@@ -192,5 +193,10 @@ public class VcfOutputRenderer extends OutputRenderer {
                         .map(DataSourceFuncotationFactory::getSupportedFuncotationFields)
                         .flatMap(LinkedHashSet::stream)
                         .map(Object::toString).collect(Collectors.joining(HEADER_LISTED_FIELD_DELIMITER));
+    }
+
+    private static String retrieveSanitizedFuncotation(final Funcotation funcotation, final String manualAnnotationSerializedString) {
+        final String initialString = funcotation.serializeToVcfString(manualAnnotationSerializedString);
+        return StringUtils.replaceEach(initialString, new String[]{",", ";", "=", "\t"}, new String[]{"_%2C_", "_%3B_", "_%3D_", "_%09_"});
     }
 }

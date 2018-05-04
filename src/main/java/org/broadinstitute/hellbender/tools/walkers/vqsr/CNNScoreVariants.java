@@ -17,14 +17,13 @@ import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.python.StreamingPythonScriptExecutor;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.runtime.AsynchronousStreamWriterService;
+import org.broadinstitute.hellbender.utils.runtime.AsynchronousStreamWriter;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
 import java.io.*;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.StreamSupport;
 
 
@@ -164,8 +163,7 @@ public class CNNScoreVariants extends VariantWalker {
     // the requestedPython executable exists and can be located.
     final StreamingPythonScriptExecutor pythonExecutor = new StreamingPythonScriptExecutor(true);
 
-    private FileOutputStream fifoWriter;
-    private AsynchronousStreamWriterService<String> asyncWriter = null;
+    private AsynchronousStreamWriter<String> asyncWriter = null;
     private List<String> batchList = new ArrayList<>(inferenceBatchSize);
 
     private int curBatchSize = 0;
@@ -227,21 +225,12 @@ public class CNNScoreVariants extends VariantWalker {
         // Start the Python process, and get a FIFO from the executor to use to send data to Python. The lifetime
         // of the FIFO is managed by the executor; the FIFO will be destroyed when the executor is destroyed.
         pythonExecutor.start(Collections.emptyList(), enableJournal);
-        final File fifoFile = pythonExecutor.getFIFOForWrite();
 
         // Open the FIFO for writing. Opening a FIFO for read or write will block until there is reader/writer
         // on the other end, so before we open it, send an ASYNCHRONOUS command (one that doesn't wait for a
         // response) to the Python process to open the FIFO for reading. The Python process will then block until
         // we open the FIFO. We can then call getAccumulatedOutput.
-        pythonExecutor.sendAsynchronousCommand(String.format("fifoFile = open('%s', 'r')" + NL, fifoFile.getAbsolutePath()));
-        try {
-            fifoWriter = new FileOutputStream(fifoFile);
-        } catch (IOException e) {
-            throw new GATKException("Failure opening FIFO for writing", e);
-        }
-
-        pythonExecutor.getAccumulatedOutput();
-        asyncWriter = pythonExecutor.getAsynchronousStreamWriterService(fifoWriter, AsynchronousStreamWriterService.stringSerializer);
+        asyncWriter = pythonExecutor.getStreamWriter(AsynchronousStreamWriter.stringSerializer);
         batchList = new ArrayList<>(transferBatchSize);
 
         // Also, ask Python to open our output file, where it will write the contents of everything it reads
@@ -305,9 +294,9 @@ public class CNNScoreVariants extends VariantWalker {
         if (curBatchSize == transferBatchSize) {
             if (waitforBatchCompletion == true) {
                 // wait for the last batch to complete before we start a new one
-                asyncWriter.waitForPreviousBatchCompletion(1, TimeUnit.MINUTES);
+                asyncWriter.waitForPreviousBatchCompletion();
                 waitforBatchCompletion = false;
-                pythonExecutor.getAccumulatedOutput();
+                pythonExecutor.waitForAck();
             }
             executePythonCommand();
             waitforBatchCompletion = true;
@@ -381,17 +370,16 @@ public class CNNScoreVariants extends VariantWalker {
     @Override
     public Object onTraversalSuccess() {
         if (waitforBatchCompletion) {
-            asyncWriter.waitForPreviousBatchCompletion(1, TimeUnit.MINUTES);
-            pythonExecutor.getAccumulatedOutput();
+            asyncWriter.waitForPreviousBatchCompletion();
+            pythonExecutor.waitForAck();
         }
         if (curBatchSize > 0) {
             executePythonCommand();
-            asyncWriter.waitForPreviousBatchCompletion(1, TimeUnit.MINUTES);
-            pythonExecutor.getAccumulatedOutput();
+            asyncWriter.waitForPreviousBatchCompletion();
+            pythonExecutor.waitForAck();
         }
 
         pythonExecutor.sendSynchronousCommand("tempFile.close()" + NL);
-        pythonExecutor.sendSynchronousCommand("fifoFile.close()" + NL);
         pythonExecutor.terminate();
 
         writeOutputVCFWithScores();
@@ -401,12 +389,12 @@ public class CNNScoreVariants extends VariantWalker {
 
     private void executePythonCommand() {
         final String pythonCommand = String.format(
-                "vqsr_cnn.score_and_write_batch(args, model, tempFile, fifoFile, %d, %d, '%s')",
+                "vqsr_cnn.score_and_write_batch(args, model, tempFile, 'unreferenced', %d, %d, '%s')",
                 curBatchSize,
                 inferenceBatchSize,
                 outputTensorsDir) + NL;
         pythonExecutor.sendAsynchronousCommand(pythonCommand);
-        asyncWriter.startAsynchronousBatchWrite(batchList);
+        asyncWriter.startBatchWrite(batchList);
     }
 
 

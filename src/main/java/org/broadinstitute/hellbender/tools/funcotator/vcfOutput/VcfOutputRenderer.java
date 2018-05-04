@@ -197,6 +197,6 @@ public class VcfOutputRenderer extends OutputRenderer {
 
     private static String retrieveSanitizedFuncotation(final Funcotation funcotation, final String manualAnnotationSerializedString) {
         final String initialString = funcotation.serializeToVcfString(manualAnnotationSerializedString);
-        return StringUtils.replaceEach(initialString, new String[]{",", ";", "=", "\t"}, new String[]{"_%2C_", "_%3B_", "_%3D_", "_%09_"});
+        return StringUtils.replaceEach(initialString, new String[]{",", ";", "=", "\t", "|"}, new String[]{"_%2C_", "_%3B_", "_%3D_", "_%09_", "_%7C_"});
     }
 }

@@ -111,7 +111,7 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
     @Argument(doc = "file containing non-canonical chromosome names (e.g chrUn_KI270588v1) in the reference, human reference (hg19 or hg38) assumed when omitted",
             shortName = "alt-tigs",
             fullName = "non-canonical-contig-names-file", optional = true)
-    public String nonCanonicalChromosomeNamesFile;
+    private String nonCanonicalChromosomeNamesFile;
 
     @Argument(doc = "prefix for output files (including VCF files and if enabled, the signaling assembly contig's alignments); sample name will be appended after the provided argument",
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -165,7 +165,7 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
 
         private AssemblyContigsClassifiedByAlignmentSignatures(final JavaRDD<AssemblyContigWithFineTunedAlignments> contigs) {
             unknown = contigs.filter(tig -> tig.getAlignmentSignatureBasicType().equals(UNKNOWN)).cache();
-            simple = contigs.filter(tig -> tig.getAlignmentSignatureBasicType().equals(SIMPLE)).cache();
+            simple = contigs.filter(tig -> tig.getAlignmentSignatureBasicType().equals(SIMPLE_CHIMERA)).cache();
             complex = contigs.filter(tig -> tig.getAlignmentSignatureBasicType().equals(COMPLEX)).cache();
         }
 
@@ -173,8 +173,8 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
          * Write SAM file, if requested, for original alignments of contigs recognized as "Ambiguous", "Incomplete", and "MisAssemblySuspect"
          * TODO: 11/17/17 salvation on assembly contigs that 1) has ambiguous "best" configuration, and 2) has incomplete picture; and flag accordingly
          */
-        private void writeSAMfilesForSuspicious(final String outputPrefix, final JavaRDD<GATKRead> assemblyRawAlignments,
-                                                final SAMFileHeader header) {
+        private void writeSAMfilesForUnknown(final String outputPrefix, final JavaRDD<GATKRead> assemblyRawAlignments,
+                                             final SAMFileHeader header) {
 
             final Map<AssemblyContigWithFineTunedAlignments.ReasonForAlignmentClassificationFailure, Iterable<String>> reasonToContigNames =
                     unknown.mapToPair(tig -> new Tuple2<>(tig.getReasonForAlignmentClassificationFailure(), tig.getContigName()))
@@ -206,7 +206,7 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
                 AssemblyContigAlignmentsConfigPicker
                         .createOptimalCoverageAlignmentSetsForContigs(assemblyRawAlignments, headerBroadcast.getValue(),
                                 canonicalChromosomesBroadcast.getValue(), 0.0, toolLogger)
-                        .filter(AssemblyContigWithFineTunedAlignments::isInformative).cache();
+                        .cache();
         toolLogger.info( contigsWithChimericAlignmentsReconstructed.count() +
                 " contigs with chimeric alignments potentially giving SV signals.");
 
@@ -247,7 +247,7 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
                 svDiscoveryInputMetaData.toolLogger);
 
         if (writeSAMFiles) {
-            contigsByPossibleRawTypes.writeSAMfilesForSuspicious(outputPrefixWithSampleName, assemblyRawAlignments,
+            contigsByPossibleRawTypes.writeSAMfilesForUnknown(outputPrefixWithSampleName, assemblyRawAlignments,
                     svDiscoveryInputMetaData.sampleSpecificData.headerBroadcast.getValue());
         }
     }

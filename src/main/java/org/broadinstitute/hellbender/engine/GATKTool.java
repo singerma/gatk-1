@@ -803,20 +803,34 @@ public abstract class GATKTool extends CommandLineProgram {
     protected String getToolkitShortName() { return "GATK"; }
 
     /**
-     * A method to allow a user to inject data sources after initialization that were not specified as command-line
-     * arguments.
+     * Call {@link GATKTool#addFeatureInputsAfterInitialization(String, String, Class, int)} with no caching.
+     *
      * @return The {@link FeatureInput} used as the key for this data source.
      */
     protected FeatureInput<? extends Feature> addFeatureInputsAfterInitialization(final String filePath,
                                                                                   final String name,
                                                                                   final Class<? extends Feature> featureType) {
 
+
+        return addFeatureInputsAfterInitialization(filePath, name, featureType, 0);
+    }
+
+    /**
+     * A method to allow a user to inject data sources after initialization that were not specified as command-line
+     * arguments.
+     * @return The {@link FeatureInput} used as the key for this data source.
+     */
+    protected FeatureInput<? extends Feature> addFeatureInputsAfterInitialization(final String filePath,
+                                                                                  final String name,
+                                                                                  final Class<? extends Feature> featureType,
+                                                                                  int lookaheadCacheInBp) {
+
         final FeatureInput<? extends Feature> featureInput = new FeatureInput<>(name + FeatureInput.FEATURE_ARGUMENT_TAG_DELIMITER + filePath);
 
         //Add datasource to the feature manager too so that it can be queried. Setting lookahead to 0 to avoid caching.
         //Note: we are disabling lookahead here because of windowed queries that need to "look behind" as well.
         features.addToFeatureSources(
-                0,
+                lookaheadCacheInBp,
                 featureInput,
                 featureType,
                 cloudPrefetchBuffer,

@@ -287,6 +287,14 @@ public class Funcotator extends VariantWalker {
     )
     protected boolean allowHg19ContigNamesWithB37 = true;
 
+    @Argument(
+            fullName = FuncotatorArgumentDefinitions.LOOKAHEAD_CACHE_IN_BP_NAME,
+            optional = true,
+            minValue = 0,
+            doc = "Number of base-pairs to cache when querying variants."
+    )
+    protected int lookaheadFeatureCachingInBp = FuncotatorArgumentDefinitions.LOOKAHEAD_CACHE_IN_BP_DEFAULT_VALUE;
+
     //==================================================================================================================
 
     private OutputRenderer outputRenderer;
@@ -568,8 +576,7 @@ public class Funcotator extends VariantWalker {
                         IOUtils.getPath( dataSourceProperties.getProperty(DataSourceUtils.CONFIG_FILE_FIELD_NAME_SRC_FILE) )
                 ).toUri().toString(),
                 name,
-                featureClazz
-        );
+                featureClazz, lookaheadFeatureCachingInBp);
 
         // Add our feature input to our list of manual inputs:
         manualLocatableFeatureInputs.add(featureInput);

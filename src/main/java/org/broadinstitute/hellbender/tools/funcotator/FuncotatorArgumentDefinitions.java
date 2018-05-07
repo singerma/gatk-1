@@ -46,6 +46,9 @@ public class FuncotatorArgumentDefinitions {
     public static final String HG19_REFERENCE_VERSION_STRING = "hg19";
     public static final String HG38_REFERENCE_VERSION_STRING = "hg38";
 
+    public static final String LOOKAHEAD_CACHE_IN_BP_NAME = "lookahead-cache-bp";
+    public static final int LOOKAHEAD_CACHE_IN_BP_DEFAULT_VALUE = 100000;
+
     // ------------------------------------------------------------
     // Helper Types:
 

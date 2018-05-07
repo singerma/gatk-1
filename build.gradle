@@ -74,6 +74,9 @@ final baseJarName = 'gatk'
 final secondaryBaseJarName = 'hellbender'
 final docBuildDir = "$buildDir/docs"
 final pythonPackageArchiveName = 'gatkPythonPackageArchive.zip'
+final gatkCondaTemplate = "scripts/gatkcondaenv.yml.template"
+final gatkCondaYML = "gatkcondaenv.yml"
+final gatkCondaIntelYML = "gatkcondaenv.intel.yml"
 final largeResourcesFolder = "src/main/resources/large"
 final buildPrerequisitesMessage = "See https://github.com/broadinstitute/gatk#building for information on how to build GATK."
 
@@ -518,7 +521,7 @@ task sparkJar(type: ShadowJar) {
 }
 
 task bundle(type: Zip) {
-    dependsOn shadowJar, sparkJar, 'gatkTabComplete', 'createPythonPackageArchive', 'gatkDoc'
+    dependsOn shadowJar, sparkJar, 'condaEnvironmentDefinition', 'gatkTabComplete', 'gatkDoc'
 
     doFirst {
         assert file("gatk").exists()
@@ -542,12 +545,9 @@ task bundle(type: Zip) {
         rename 'GATKConfig.properties', 'GATKConfig.EXAMPLE.properties'
     }
 
-    from("${buildDir}/${pythonPackageArchiveName}")
-    // When including gatkcondaenv.yml file in the release bundle, strip off the
-    // 'build/' prefix used for the location of the Python package archive.
-    from("scripts/gatkcondaenv.yml", {
-        filter { line -> line.replace("build/${pythonPackageArchiveName}", pythonPackageArchiveName) }
-    })
+    from("$buildDir/$pythonPackageArchiveName")
+    from("$buildDir/$gatkCondaYML")
+    from("$buildDir/$gatkCondaIntelYML")
     into(baseName)
 
     doLast {
@@ -555,14 +555,49 @@ task bundle(type: Zip) {
     }
 }
 
-task createPythonPackageArchive(type: Zip) {
+// Create the python package archive file, and two GATK conda environment yml files from the template
+// (one for standard GATK and one for running GATK with Intel hardware).
+task condaEnvironmentDefinition() {
+    dependsOn 'pythonPackageArchive'
+    inputs.file gatkCondaTemplate
+    outputs.dir buildDir
 
+    doLast() {
+        def standardCondaBindings = [
+                "condaEnvName":"gatk",
+                "condaEnvDescription" : "Conda environment for GATK Python Tools",
+                "tensorFlowDependency" : "tensorflow==1.4.0"]
+        createFileFromTemplate(gatkCondaTemplate, standardCondaBindings, new File("$buildDir/$gatkCondaYML"))
+
+        def intelCondaBindings = [
+                "condaEnvName":"gatkintel",
+                "condaEnvDescription" : "Conda environment for GATK Python Tools running with Intel hardware acceleration",
+                "tensorFlowDependency" :
+                        "https://anaconda.org/intel/tensorflow/1.4.0/download/tensorflow-1.4.0-cp36-cp36m-linux_x86_64.whl"]
+        createFileFromTemplate(gatkCondaTemplate, intelCondaBindings, new File("$buildDir/$gatkCondaIntelYML"))
+    }
+    doLast {
+        logger.lifecycle("Created conda environment yml files in: $buildDir")
+    }
+
+}
+
+// Populate a file based on a template, substituting placeholders with values from a bindings map.
+def createFileFromTemplate(sourceTemplateFile, variableBindings, targetFile) {
+    def templateFile = new File(sourceTemplateFile)
+    def templateEngine = new groovy.text.GStringTemplateEngine()
+    def template = templateEngine.createTemplate(templateFile).make(variableBindings)
+    targetFile.withWriter('UTF-8') { writer -> writer.write(template.toString()) }
+}
+
+task pythonPackageArchive(type: Zip) {
+    inputs.dir "src/main/python/org/broadinstitute/hellbender/"
+    outputs.file pythonPackageArchiveName
     doFirst {
-        logger.lifecycle("Creating GATK Python package archive...")
         assert file("src/main/python/org/broadinstitute/hellbender/").exists()
     }
 
-    destinationDir file("$buildDir")
+    destinationDir file("${buildDir}")
     archiveName pythonPackageArchiveName
     from("src/main/python/org/broadinstitute/hellbender/")
     into("/")
@@ -570,6 +605,19 @@ task createPythonPackageArchive(type: Zip) {
     doLast {
         logger.lifecycle("Created GATK Python package archive in ${destinationDir}/${archiveName}")
     }
+}
+
+// Creates a standard, local, GATK conda environment, for use by developers during iterative
+// development. Assumes conda or miniconda is already installed.
+//
+// NOTE: This CREATES a local conda environment; but does not *activate* it. The environment must
+// be activated manually in the shell from which GATK will be run.
+//
+task localDevCondaEnv(type: Exec) {
+    dependsOn 'condaEnvironmentDefinition'
+    inputs.file("$buildDir/$pythonPackageArchiveName")
+    workingDir "$buildDir"
+    commandLine "conda", "env", "update", "-f", gatkCondaYML
 }
 
 task javadocJar(type: Jar, dependsOn: javadoc) {

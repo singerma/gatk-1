@@ -56,15 +56,25 @@ releases of the toolkit.
     * Python 3.6.2, along with a set of additional Python packages, is required to run some tools and workflows.
       GATK uses the [Conda](https://conda.io/docs/index.html) package manager to establish and manage the
       environment and dependencies required by these tools. The GATK Docker image comes with this environment
-      pre-configured. In order to establish an environment suitable to run these tools outside of the Docker image, the
-      conda [gatkcondaenv.yml](https://github.com/broadinstitute/gatk/blob/master/scripts/gatkcondaenv.yml) file is
-      provided. To establish the conda environment locally, [Conda](https://conda.io/docs/index.html) must first
-      be installed. Then, create the gatk environment by running the command ```conda env create -n gatk -f gatkcondaenv.yml```
-      (developers should run ```./gradlew createPythonPackageArchive```, followed by
-      ```conda env create -n gatk -f scripts/gatkcondaenv.yml``` from within the root of the repository clone).
-      To activate the environment once it has been created, run the command ```source activate gatk```. See the
-      [Conda](https://conda.io/docs/user-guide/tasks/manage-environments.html) documentation for
-      additional information about using and managing Conda environments.
+      pre-configured. In order to establish an environment suitable to run these tools outside of the Docker image,
+      do the following:
+        * Make sure [Conda or MiniConda](https://conda.io/docs/index.html) is installed. Miniconda is sufficient.
+        * If running from a zip or tar distribution:
+            * Run the command ```conda env create -f gatkcondaenv.yml``` to create the conda environment
+              required by GATK.
+            * The conda environment must be activated from within the shell from which GATK is run whenever tools
+              with a Python dependency are executed. Activate the environment before running by executing
+              the command ```source activate gatk```.
+        * If running from a build created by cloning the repository:
+            * Run ```./gradlew localDevCondaEnv```. This will autogenerate the Python package archive and conda
+              yml dependency file(s) in the build directory, and create the local conda environment named "gatk".
+            * Activate the GATK conda environment by running the command as described above.
+        * Alternatively, the ```./gradlew condaEnvironmentDefinition``` task can be used to only generate the
+          archive and yml definition files used to create the conda environment. The conda environment can then
+          be manually created from within the build directory by executing the command:
+          ```conda env create -n gatk -f gatkcondaenv.yml``` and `activated as described above.
+        * See the [Conda](https://conda.io/docs/user-guide/tasks/manage-environments.html) documentation for
+          additional information about using and managing Conda environments.
     * R 3.2.5 (needed for producing plots in certain tools)
 * To build GATK:
     * A Java 8 JDK

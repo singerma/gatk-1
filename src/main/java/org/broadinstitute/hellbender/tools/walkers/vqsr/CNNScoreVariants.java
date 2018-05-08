@@ -274,18 +274,7 @@ public class CNNScoreVariants extends VariantWalker {
             pythonExecutor.sendSynchronousCommand(String.format("cfg.inter_op_parallelism_threads=%d" + NL, tfInterThreads));
             pythonExecutor.sendSynchronousCommand("backend.set_session(backend.tf.Session(config=cfg))" + NL);
 
-            String getArgsAndModel;
-            if (weights != null && architecture != null) {
-                getArgsAndModel = String.format("args, model = vqsr_cnn.args_and_model_from_semantics('%s', weights_hd5='%s')", architecture, weights) + NL;
-                logger.info("Using key:" + scoreKey + " for CNN architecture:" + architecture + " and weights:" + weights);
-            } else if (architecture == null) {
-                getArgsAndModel = String.format("args, model = vqsr_cnn.args_and_model_from_semantics(None, weights_hd5='%s', tensor_type='%s')", weights, tensorType.name()) + NL;
-                logger.info("Using key:" + scoreKey + " for CNN weights:" + weights);
-            } else {
-                getArgsAndModel = String.format("args, model = vqsr_cnn.args_and_model_from_semantics('%s')", architecture) + NL;
-                logger.info("Using key:" + scoreKey + " for CNN architecture:" + architecture);
-            }
-            pythonExecutor.sendSynchronousCommand(getArgsAndModel);
+            loadPythonModel();
 
         } catch (IOException e) {
             throw new GATKException("Error when creating temp file and initializing python executor.", e);
@@ -331,6 +320,7 @@ public class CNNScoreVariants extends VariantWalker {
             waitforBatchCompletion = true;
             curBatchSize = 0;
             batchList = new ArrayList<>(transferBatchSize);
+            loadPythonModel();
         }
     }
 
@@ -422,6 +412,21 @@ public class CNNScoreVariants extends VariantWalker {
         writeOutputVCFWithScores();
 
         return true;
+    }
+
+    private void loadPythonModel() {
+        String getArgsAndModel;
+        if (weights != null && architecture != null) {
+            getArgsAndModel = String.format("args, model = vqsr_cnn.args_and_model_from_semantics('%s', weights_hd5='%s')", architecture, weights) + NL;
+            logger.info("Using key:" + scoreKey + " for CNN architecture:" + architecture + " and weights:" + weights);
+        } else if (architecture == null) {
+            getArgsAndModel = String.format("args, model = vqsr_cnn.args_and_model_from_semantics(None, weights_hd5='%s', tensor_type='%s')", weights, tensorType.name()) + NL;
+            logger.info("Using key:" + scoreKey + " for CNN weights:" + weights);
+        } else {
+            getArgsAndModel = String.format("args, model = vqsr_cnn.args_and_model_from_semantics('%s')", architecture) + NL;
+            logger.info("Using key:" + scoreKey + " for CNN architecture:" + architecture);
+        }
+        pythonExecutor.sendSynchronousCommand(getArgsAndModel);
     }
 
     private void executePythonCommand() {

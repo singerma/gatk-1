@@ -83,14 +83,14 @@ def score_and_write_batch(args, model, file_out, fifo, batch_size, python_batch_
             read_batch.append(tensor)
 
     if args.tensor_name in defines.TENSOR_MAPS_1D:
-        predictions = model.predict([np.array(reference_batch), np.array(annotation_batch)],
-                                    batch_size=python_batch_size)
+        batch = [np.array(reference_batch), np.array(annotation_batch)]
+        predictions = model.predict(batch, batch_size=python_batch_size)
     elif args.tensor_name in defines.TENSOR_MAPS_2D:
-        predictions = model.predict(
-            {args.tensor_name:np.array(read_batch), args.annotation_set:np.array(annotation_batch)},
-            batch_size=python_batch_size)
+        batch = {args.tensor_name:np.array(read_batch), args.annotation_set:np.array(annotation_batch)}
+        predictions = model.predict(batch, batch_size=python_batch_size)
     else:
         raise ValueError('Unknown tensor mapping.  Check architecture file.', args.tensor_name)
+    clear_session()
 
     indel_scores = predictions_to_indel_scores(predictions)
     snp_scores = predictions_to_snp_scores(predictions)
@@ -430,3 +430,15 @@ def _write_tensor_to_hd5(args, tensor, annotations, contig, pos, variant_type):
     with h5py.File(tensor_path, 'w') as hf:
         hf.create_dataset(args.tensor_name, data=tensor, compression='gzip')
         hf.create_dataset(args.annotation_set, data=annotations, compression='gzip')
+
+
+def clear_session():
+    try:
+        K.clear_session()
+        K.get_session().close()
+        cfg = K.tf.ConfigProto()
+        cfg.gpu_options.allow_growth = True
+        K.set_session(K.tf.Session(config=cfg))
+    except AttributeError as e:
+        print('Could not clear session. Maybe you are using Theano backend?')
+

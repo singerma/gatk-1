@@ -19,6 +19,15 @@ public final class PosteriorProbabilitiesUtils {
 
     /**
      * Calculates phred-scaled posterior probabilities for genotypes given the data and allele frequency priors.
+     *
+     * @param vc1
+     * @param resources
+     * @param numRefSamplesFromMissingResources
+     * @param globalFrequencyPriorDirichlet
+     * @param useInputSamples -- use input samples for prior calculation
+     * @param useAC -- use the AC over the MLEAC (if available)
+     * @param useACoff -- use flat priors
+     * @return
      */
     public static VariantContext calculatePosteriorProbs(final VariantContext vc1,
                                                          final Collection<VariantContext> resources,

@@ -158,8 +158,8 @@ public final class CalculateGenotypePosteriors extends VariantWalker {
      * across alleles. The calculation for this parameter is (Effective population size) * (steady state mutation rate)
      *
      */
-     @Argument(fullName="global-prior", doc="Global Dirichlet prior parameters for the allele frequency",optional=true)
-     public double globalPrior = HomoSapiensConstants.SNP_HETEROZYGOSITY;
+    @Argument(fullName="global-prior", doc="Global Dirichlet prior parameters for the allele frequency",optional=true)
+    public double globalPrior = HomoSapiensConstants.SNP_HETEROZYGOSITY;
 
     /**
      * The mutation prior -- i.e. the probability that a new mutation occurs. Sensitivity analysis on known de novo 

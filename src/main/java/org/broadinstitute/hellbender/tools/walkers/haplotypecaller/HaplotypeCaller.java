@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
+import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import java.nio.file.Path;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -20,8 +21,10 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.util.ArrayList;
 import java.util.List;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 
 
 /**
@@ -193,10 +196,17 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
 
     @Override
     public void onTraversalStart() {
+        if(hcArgs.applyPriors && hcArgs.genotypeArgs.samplePloidy != HomoSapiensConstants.DEFAULT_PLOIDY) {
+            throw new UserException("Priors can only be applied for diploid samples.");
+        }
+
         final ReferenceSequenceFile referenceReader = getReferenceReader(referenceArguments);
         hcEngine = new HaplotypeCallerEngine(hcArgs, createOutputBamIndex, createOutputBamMD5, getHeaderForReads(), referenceReader);
 
-        // The HC engine will make the right kind (VCF or GVCF) of writer for us
+
+
+
+            // The HC engine will make the right kind (VCF or GVCF) of writer for us
         final SAMSequenceDictionary sequenceDictionary = getHeaderForReads().getSequenceDictionary();
         vcfWriter = hcEngine.makeVCFWriter(outputVCF, sequenceDictionary, createOutputVariantIndex, createOutputVariantMD5);
         hcEngine.writeHeader(vcfWriter, sequenceDictionary, getDefaultToolVCFHeaderLines());

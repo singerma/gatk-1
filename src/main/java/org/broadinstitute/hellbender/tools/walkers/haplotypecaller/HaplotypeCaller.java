@@ -196,7 +196,7 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
 
     @Override
     public void onTraversalStart() {
-        if(hcArgs.applyPriors && hcArgs.genotypeArgs.samplePloidy != HomoSapiensConstants.DEFAULT_PLOIDY) {
+        if(hcArgs.genotypeArgs.applyPriors && hcArgs.genotypeArgs.samplePloidy != HomoSapiensConstants.DEFAULT_PLOIDY) {
             throw new UserException("Priors can only be applied for diploid samples.");
         }
 

@@ -88,7 +88,10 @@ public class CNNScoreVariantsIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
         argsBuilder.addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVCF)
                 .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, "%s")
-                .addArgument(StandardArgumentDefinitions.REFERENCE_LONG_NAME, hg19MiniReference)
+                .addArgument(StandardArgumentDefinitions.REFERENCE_LONG_NAME, b37_reference_20_21)
+                .addArgument("architecture", architecture1D)
+                .addArgument("inference-batch-size", "8")
+                .addArgument("transfer-batch-size", "16")
                 .addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(argsBuilder.toString(),

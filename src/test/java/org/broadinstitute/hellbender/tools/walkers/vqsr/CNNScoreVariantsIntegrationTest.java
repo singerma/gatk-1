@@ -108,7 +108,7 @@ public class CNNScoreVariantsIntegrationTest extends CommandLineProgramTest {
                 .addArgument("architecture", architecture1D)
                 .addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
 
-        argsBuilder.addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, largeFileTestDir + "VQSR/expected/cnn_1d_chr20_subset_expected.vcf");
+        argsBuilder.addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, largeFileTestDir + "VQSR/expected/chrM.vcf");
         runCommandLine(argsBuilder);
     }
 

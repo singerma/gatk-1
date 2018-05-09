@@ -210,6 +210,7 @@ public final class ReferenceConfidenceModel {
                                                        final ReadLikelihoods<Haplotype> readLikelihoods,
                                                        final PloidyModel ploidyModel,
                                                        final List<VariantContext> variantCalls,
+                                                       final boolean applyPriors,
                                                        final List<VariantContext> VCpriors,
                                                        final double SNPdirichletPrior,
                                                        final double INDELdirichletPrior) {
@@ -237,10 +238,15 @@ public final class ReferenceConfidenceModel {
 
             final VariantContext overlappingSite = getOverlappingVariantContext(curPos, variantCalls);
             if ( overlappingSite != null && overlappingSite.getStart() == curPos.getStart() ) {
-                results.add(PosteriorProbabilitiesUtils.calculatePosteriorProbs(overlappingSite, VCpriors, numRefSamplesForPrior, overlappingSite.isSNP()? SNPdirichletPrior : INDELdirichletPrior, false, true, false));
+                if (applyPriors && VCpriors != null) {
+                    results.add(PosteriorProbabilitiesUtils.calculatePosteriorProbs(overlappingSite, VCpriors, numRefSamplesForPrior, overlappingSite.isSNP() ? SNPdirichletPrior : INDELdirichletPrior, false, true, false));
+                }
+                else {
+                    results.add(overlappingSite);
+                }
             } else {
                 // otherwise emit a reference confidence variant context
-                results.add(makeReferenceConfidenceVariantContext(ploidy, ref, sampleName, globalRefOffset, pileup, curPos, offset, VCpriors, numRefSamplesForPrior, Math.max(SNPdirichletPrior, INDELdirichletPrior)));
+                results.add(makeReferenceConfidenceVariantContext(ploidy, ref, sampleName, globalRefOffset, pileup, curPos, offset, applyPriors, VCpriors, numRefSamplesForPrior, Math.max(SNPdirichletPrior, INDELdirichletPrior)));
             }
         }
 
@@ -254,6 +260,7 @@ public final class ReferenceConfidenceModel {
                                                                  final ReadPileup pileup,
                                                                  final Locatable curPos,
                                                                  final int offset,
+                                                                 final boolean applyPriors,
                                                                  final List<VariantContext> VCpriors,
                                                                  final int nRefSamples,
                                                                  final double globalFrequencyPriorDirichlet) {
@@ -286,9 +293,13 @@ public final class ReferenceConfidenceModel {
         gb.GQ(GATKVariantContextUtils.calculateGQFromPLs(leastConfidenceGLsAsPLs));
         gb.PL(leastConfidenceGLsAsPLs);
 
-        PosteriorProbabilitiesUtils.calculatePosteriorProbs(vcb.genotypes(gb.make()).make(), VCpriors, nRefSamples, globalFrequencyPriorDirichlet, false, true, false);
-        //TODO FIXME: after new-qual refactoring, these should be static calls to AF calculator
-        return vcb.make();
+        if(!applyPriors) {
+            return vcb.make();
+        }
+        else {
+            return PosteriorProbabilitiesUtils.calculatePosteriorProbs(vcb.genotypes(gb.make()).make(), VCpriors, nRefSamples, globalFrequencyPriorDirichlet, false, true, false);
+            //TODO FIXME: after new-qual refactoring, these should be static calls to AF calculator
+        }
     }
 
     /**

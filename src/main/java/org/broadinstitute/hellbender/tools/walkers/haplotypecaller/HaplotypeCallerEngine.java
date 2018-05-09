@@ -606,7 +606,8 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                 // output variant containing region.
                 result.addAll(referenceConfidenceModel.calculateRefConfidence(assemblyResult.getReferenceHaplotype(),
                         calledHaplotypes.getCalledHaplotypes(), assemblyResult.getPaddedReferenceLoc(), regionForGenotyping,
-                        readLikelihoods, genotypingEngine.getPloidyModel(), calledHaplotypes.getCalls(), VCpriors, genotypingEngine.snpHeterozygosity, genotypingEngine.indelHeterozygosity));
+                        readLikelihoods, genotypingEngine.getPloidyModel(), calledHaplotypes.getCalls(), hcArgs.genotypeArgs.applyPriors,
+                        VCpriors, genotypingEngine.snpHeterozygosity, genotypingEngine.indelHeterozygosity));
                 // output right-flanking non-variant section:
                 if (trimmingResult.hasRightFlankingRegion()) {
                     result.addAll(referenceModelForNoVariation(trimmingResult.nonVariantRightFlankRegion(), false, VCpriors));
@@ -651,7 +652,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             final List<Haplotype> haplotypes = Collections.singletonList(refHaplotype);
             return referenceConfidenceModel.calculateRefConfidence(refHaplotype, haplotypes,
                     paddedLoc, region, createDummyStratifiedReadMap(refHaplotype, samplesList, region),
-                    genotypingEngine.getPloidyModel(), Collections.emptyList(), VCpriors, genotypingEngine.snpHeterozygosity, genotypingEngine.indelHeterozygosity);
+                    genotypingEngine.getPloidyModel(), Collections.emptyList(), hcArgs.genotypeArgs.applyPriors, VCpriors, genotypingEngine.snpHeterozygosity, genotypingEngine.indelHeterozygosity);
         }
         else {
             return NO_CALLS;

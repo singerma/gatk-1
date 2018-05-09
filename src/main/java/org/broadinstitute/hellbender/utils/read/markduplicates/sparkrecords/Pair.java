@@ -31,6 +31,7 @@ public final class Pair extends PairedEnds implements picard.sam.util.PhysicalLo
     private final short secondRefIndex;
     private final boolean R2R;
     private final int score;
+    private final boolean wasFlipped;
 
     // Information used to detect optical dupes
     private short readGroupIndex = -1;
@@ -65,23 +66,15 @@ public final class Pair extends PairedEnds implements picard.sam.util.PhysicalLo
             firstUnclippedStartPosition = read2UnclippedStart;
             secondUnclippedStartPosition = read1UnclippedStart;
         }
+        // Keep track of the orientation of read1 and read2 as it is important for optical duplicate marking
+        wasFlipped = second.isFirstOfPair();
 
         firstStartPosition = first.getAssignedStart();
         firstRefIndex = (short)ReadUtils.getReferenceIndex(first, header);
         secondRefIndex = (short)ReadUtils.getReferenceIndex(second, header);
 
-        final GATKRead firstOfPair;
-        final GATKRead secondOfPair;
-        if (read1.isFirstOfPair()){
-            firstOfPair = read1;
-            secondOfPair = read2;
-        } else {
-            firstOfPair = read2;
-            secondOfPair = read1;
-        }
-
-        R1R = firstOfPair.isReverseStrand();
-        R2R = secondOfPair.isReverseStrand();
+        R1R = first.isReverseStrand();
+        R2R = second.isReverseStrand();
 
         this.key = ReadsKey.hashKeyForPair(header, first, second);
     }
@@ -109,6 +102,7 @@ public final class Pair extends PairedEnds implements picard.sam.util.PhysicalLo
         R2R = input.readBoolean();
 
         readGroupIndex = input.readShort();
+        wasFlipped = input.readBoolean();
     }
 
     protected void serialize(Kryo kryo, Output output) {
@@ -127,6 +121,7 @@ public final class Pair extends PairedEnds implements picard.sam.util.PhysicalLo
         output.writeBoolean(R2R);
 
         output.writeShort(readGroupIndex);
+        output.writeBoolean(wasFlipped);
     }
 
     @Override
@@ -170,14 +165,23 @@ public final class Pair extends PairedEnds implements picard.sam.util.PhysicalLo
      * Returns one of {@link ReadEnds#RR}, {@link ReadEnds#RF}, {@link ReadEnds#FR}, {@link ReadEnds#FF}
      */
     public byte getOrientationForOpticalDuplicates() {
+        return getOrientation(true);
+    }
+
+    @Override
+    public byte getPCROrientation() {
+        return getOrientation(false);
+    }
+
+    private byte getOrientation(final boolean optical) {
         if (R1R && R2R) {
             return ReadEnds.RR;
         }
         if (R1R) {
-            return ReadEnds.RF; //at this point we know for sure R2R is false
+            return (optical&&wasFlipped)? ReadEnds.FR : ReadEnds.RF; //at this point we know for sure R2R is false
         }
         if (R2R) {
-            return ReadEnds.FR; //at this point we know for sure R1R is false
+            return (optical&&wasFlipped)? ReadEnds.RF :ReadEnds.FR; //at this point we know for sure R1R is false
         }
         return ReadEnds.FF;  //at this point we know for sure R1R is false and R2R is false
     }

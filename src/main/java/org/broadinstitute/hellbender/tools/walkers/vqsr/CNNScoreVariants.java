@@ -12,6 +12,8 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsamplingIterator;
+import org.broadinstitute.hellbender.utils.downsampling.ReservoirDownsampler;
 import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
 import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -119,7 +121,7 @@ public class CNNScoreVariants extends VariantWalker {
     private static final int KEY_INDEX = 4;
     private static final int FIFO_STRING_INITIAL_CAPACITY = 1024;
     private static final int MAX_READ_BATCH = 128000;
-    private static final int TIMEOUT_MINUTES = 6;
+    private static final int TIMEOUT_MINUTES = 1;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -137,6 +139,9 @@ public class CNNScoreVariants extends VariantWalker {
 
     @Argument(fullName = "window-size", shortName = "window-size", doc = "Neural Net input window size", minValue = 0, optional = true)
     private int windowSize = 128;
+
+    @Argument(fullName = "read-limit", shortName = "read-limit", doc = "Neural Net input read limit", minValue = 0, optional = true)
+    private int readLimit = 128;
 
     @Argument(fullName = "filter-symbolic-and-sv", shortName = "filter-symbolic-and-sv", doc = "If set will filter symbolic and and structural variants from the input VCF", optional = true)
     private boolean filterSymbolicAndSV = false;
@@ -176,6 +181,8 @@ public class CNNScoreVariants extends VariantWalker {
     private FileOutputStream fifoWriter;
     private AsynchronousStreamWriterService<String> asyncWriter = null;
     private List<String> batchList = new ArrayList<>(inferenceBatchSize);
+    List<String> readList = new ArrayList<>(readLimit);
+
 
     private int curBatchSize = 0;
     private int windowEnd = windowSize / 2;
@@ -334,23 +341,25 @@ public class CNNScoreVariants extends VariantWalker {
         } catch (UnsupportedEncodingException e) {
             throw new GATKException("Trying to make string from reference, but unsupported encoding UTF-8.", e);
         }
-        Iterator<GATKRead> readIt = readsContext.iterator();
+        Iterator<GATKRead> readIt = new ReadsDownsamplingIterator(readsContext.iterator(), new ReservoirDownsampler(readLimit));
         if (!readIt.hasNext()) {
             logger.warn("No reads at contig:" + variant.getContig() + " site:" + String.valueOf(variant.getStart()));
         }
         while (readIt.hasNext()) {
-            sb.append(GATKReadToString(readIt.next()));
+            readList.add(GATKReadToString(readIt.next()));
         }
-        sb.append("\n");
+        sb.append(String.valueOf(readList.size()));
+        sb.append(NL);
         batchList.add(sb.toString());
         curBatchSize++;
+        batchList.addAll(readList);
+        readList.clear();
     }
 
     private String GATKReadToString(GATKRead read) {
         StringBuilder sb = new StringBuilder(FIFO_STRING_INITIAL_CAPACITY);
         sb.append(read.getBasesString() + "\t");
 
-        //sb.append(baseQualityBytesToString(read.getBaseQualities()) + "\t");
         byte[] qualities = read.getBaseQualities();
         for (int i = 0; i < qualities.length - 1; i++) {
             sb.append(Integer.toString(qualities[i]) + ",");
@@ -362,17 +371,11 @@ public class CNNScoreVariants extends VariantWalker {
         sb.append((read.isPaired() ? read.mateIsReverseStrand() : "false") + "\t");
         sb.append(read.isFirstOfPair() + "\t");
         sb.append(read.getMappingQuality() + "\t");
-        sb.append(Integer.toString(read.getUnclippedStart()) + "\t");
+        sb.append(Integer.toString(read.getUnclippedStart()) + "\n");
         return sb.toString();
     }
 
-    private String baseQualityBytesToString(byte[] qualities) {
-        String qualityString = "";
-        for (int i = 0; i < qualities.length; i++) {
-            qualityString += Integer.toString(qualities[i]) + ",";
-        }
-        return qualityString.substring(0, qualityString.length() - 1);
-    }
+
 
     private String getVariantDataString(final VariantContext variant) {
         return String.format("%s\t%d\t%s\t%s",

@@ -11,7 +11,6 @@ import keras.backend as K
 from . import defines
 from . import tensor_maps
 
-READ_ELEMENTS = 8
 Read = namedtuple("Read", "seq qual cigar reverse mate_reverse first mapping_quality reference_start")
 Variant = namedtuple("Variant", "contig pos ref alt type")
 
@@ -50,7 +49,6 @@ def score_and_write_batch(args, model, file_out, fifo, batch_size, python_batch_
     variant_types = []
     variant_data = []
     read_batch = []
-
     for _ in range(batch_size):
         fifo_line = fifo.readline()
         fifo_data = fifo_line.split(defines.SEPARATOR_CHAR)
@@ -59,21 +57,22 @@ def score_and_write_batch(args, model, file_out, fifo, batch_size, python_batch_
         reference_batch.append(reference_string_to_tensor(fifo_data[4]))
         annotation_batch.append(annotation_string_to_tensor(args, fifo_data[5]))
         variant_types.append(fifo_data[6].strip())
-
-        fidx = 7 # 7 Because above we parsed: contig pos ref alt reference_string annotation variant_type
-        if args.tensor_name in defines.TENSOR_MAPS_2D and len(fifo_data) > fidx:
+        if args.tensor_name in defines.TENSOR_MAPS_2D:
             read_tuples = []
             var = Variant(fifo_data[0], int(fifo_data[1]), fifo_data[2], fifo_data[3], fifo_data[6])
-            while fidx+7 < len(fifo_data):
-                read_tuples.append( Read(fifo_data[fidx],
-                                         list(map(int, fifo_data[fidx+1].split(','))),
-                                         fifo_data[fidx+2],
-                                         bool_from_java(fifo_data[fidx+3]),
-                                         bool_from_java(fifo_data[fidx+4]),
-                                         bool_from_java(fifo_data[fidx+5]),
-                                         int(fifo_data[fidx+6]),
-                                         int(fifo_data[fidx+7])))
-                fidx += READ_ELEMENTS
+            num_reads = int(fifo_data[7].strip())
+            for _ in range(num_reads):
+                fifo_line = fifo.readline()
+                read_data = fifo_line.split(defines.SEPARATOR_CHAR)
+
+                read_tuples.append( Read(read_data[0],
+                                         list(map(int, read_data[1].split(','))),
+                                         read_data[2],
+                                         bool_from_java(read_data[3]),
+                                         bool_from_java(read_data[4]),
+                                         bool_from_java(read_data[5]),
+                                         int(read_data[6]),
+                                         int(read_data[7])))
             _, ref_start, _ = get_variant_window(args, var)
             insert_dict = get_inserts(args, read_tuples, var)
             tensor = read_tuples_to_read_tensor(args, read_tuples, ref_start, insert_dict)

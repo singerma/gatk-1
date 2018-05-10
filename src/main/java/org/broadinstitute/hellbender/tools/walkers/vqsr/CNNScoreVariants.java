@@ -326,7 +326,11 @@ public class CNNScoreVariants extends VariantWalker {
             executePythonCommand();
             waitforBatchCompletion = true;
             curBatchSize = 0;
-            batchList = new ArrayList<>(transferBatchSize);
+            if (tensorType.isReadsRequired()) {
+                batchList = new ArrayList<>(transferBatchSize * readLimit);
+            } else {
+                batchList = new ArrayList<>(transferBatchSize);
+            }
         }
     }
 

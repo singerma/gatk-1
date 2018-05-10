@@ -267,12 +267,12 @@ public class CNNScoreVariants extends VariantWalker {
             pythonExecutor.sendSynchronousCommand(String.format("tempFile = open('%s', 'w+')" + NL, scoreFile.getAbsolutePath()));
             pythonExecutor.sendSynchronousCommand("import vqsr_cnn" + NL);
             pythonExecutor.sendSynchronousCommand("from keras import backend" + NL);
-            //pythonExecutor.sendSynchronousCommand(String.format("backend.set_session(backend.tf.Session(config=backend.tf.ConfigProto(intra_op_parallelism_threads=%d, inter_op_parallelism_threads=%d)))" + NL, tfIntraThreads, tfInterThreads));
-            pythonExecutor.sendSynchronousCommand("cfg = backend.tf.ConfigProto()" + NL);
-            pythonExecutor.sendSynchronousCommand("cfg.gpu_options.allow_growth = True" + NL);
-            pythonExecutor.sendSynchronousCommand(String.format("cfg.intra_op_parallelism_threads=%d" + NL, tfIntraThreads));
-            pythonExecutor.sendSynchronousCommand(String.format("cfg.inter_op_parallelism_threads=%d" + NL, tfInterThreads));
-            pythonExecutor.sendSynchronousCommand("backend.set_session(backend.tf.Session(config=cfg))" + NL);
+            pythonExecutor.sendSynchronousCommand(String.format("backend.set_session(backend.tf.Session(config=backend.tf.ConfigProto(intra_op_parallelism_threads=%d, inter_op_parallelism_threads=%d)))" + NL, tfIntraThreads, tfInterThreads));
+//            pythonExecutor.sendSynchronousCommand("cfg = backend.tf.ConfigProto()" + NL);
+//            pythonExecutor.sendSynchronousCommand("cfg.gpu_options.allow_growth = True" + NL);
+//            pythonExecutor.sendSynchronousCommand(String.format("cfg.intra_op_parallelism_threads=%d" + NL, tfIntraThreads));
+//            pythonExecutor.sendSynchronousCommand(String.format("cfg.inter_op_parallelism_threads=%d" + NL, tfInterThreads));
+//            pythonExecutor.sendSynchronousCommand("backend.set_session(backend.tf.Session(config=cfg))" + NL);
 
             loadPythonModel();
 

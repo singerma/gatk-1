@@ -90,7 +90,7 @@ def score_and_write_batch(args, model, file_out, fifo, batch_size, python_batch_
         predictions = model.predict(batch, batch_size=python_batch_size)
     else:
         raise ValueError('Unknown tensor mapping.  Check architecture file.', args.tensor_name)
-    clear_session()
+    #clear_session()
 
     indel_scores = predictions_to_indel_scores(predictions)
     snp_scores = predictions_to_snp_scores(predictions)
@@ -111,6 +111,8 @@ def reference_string_to_tensor(reference):
             dna_data[i, defines.DNA_SYMBOLS[b]] = 1.0
         elif b in defines.AMBIGUITY_CODES:
             dna_data[i] = defines.AMBIGUITY_CODES[b]
+        elif b == '\x00':
+            break
         else:
             raise ValueError('Error! Unknown code:', b)
 

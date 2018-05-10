@@ -119,7 +119,7 @@ public class CNNScoreVariants extends VariantWalker {
     private static final int KEY_INDEX = 4;
     private static final int FIFO_STRING_INITIAL_CAPACITY = 1024;
     private static final int MAX_READ_BATCH = 128000;
-
+    private static final int TIMEOUT_MINUTES = 6;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -312,7 +312,7 @@ public class CNNScoreVariants extends VariantWalker {
         if (curBatchSize == transferBatchSize) {
             if (waitforBatchCompletion == true) {
                 // wait for the last batch to complete before we start a new one
-                asyncWriter.waitForPreviousBatchCompletion(3, TimeUnit.MINUTES);
+                asyncWriter.waitForPreviousBatchCompletion(TIMEOUT_MINUTES, TimeUnit.MINUTES);
                 waitforBatchCompletion = false;
                 pythonExecutor.getAccumulatedOutput();
             }
@@ -320,7 +320,6 @@ public class CNNScoreVariants extends VariantWalker {
             waitforBatchCompletion = true;
             curBatchSize = 0;
             batchList = new ArrayList<>(transferBatchSize);
-            loadPythonModel();
         }
     }
 
@@ -396,12 +395,12 @@ public class CNNScoreVariants extends VariantWalker {
     @Override
     public Object onTraversalSuccess() {
         if (waitforBatchCompletion) {
-            asyncWriter.waitForPreviousBatchCompletion(3, TimeUnit.MINUTES);
+            asyncWriter.waitForPreviousBatchCompletion(TIMEOUT_MINUTES, TimeUnit.MINUTES);
             pythonExecutor.getAccumulatedOutput();
         }
         if (curBatchSize > 0) {
             executePythonCommand();
-            asyncWriter.waitForPreviousBatchCompletion(3, TimeUnit.MINUTES);
+            asyncWriter.waitForPreviousBatchCompletion(TIMEOUT_MINUTES, TimeUnit.MINUTES);
             pythonExecutor.getAccumulatedOutput();
         }
 
@@ -436,9 +435,6 @@ public class CNNScoreVariants extends VariantWalker {
                 inferenceBatchSize,
                 outputTensorsDir) + NL;
         pythonExecutor.sendAsynchronousCommand(pythonCommand);
-        //pythonExecutor.sendAsynchronousCommand("backend.clear_session()" + NL);
-        //pythonExecutor.sendAsynchronousCommand("backend.get_session().close()" + NL);
-        //pythonExecutor.sendAsynchronousCommand("backend.set_session(backend.tf.Session(config=cfg))" + NL);
         asyncWriter.startAsynchronousBatchWrite(batchList);
 
     }

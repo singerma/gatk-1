@@ -33,9 +33,9 @@ public final class StreamingProcessController extends ProcessControllerBase<Capt
     // ensure that it works correctly. Those tests rely on testNG timeouts to prevent the test suite from hanging
     // in the event that this timeout mechanism fails. The testNG timeout values used must be greater than the
     // timeout used here to ensure the testNG timeout isn't triggered prematurely, which will cause the test to fail.
-    private static final int TIME_OUT_MILLIS = 30000;
+    private static final int TIME_OUT_MILLIS = 300000;
     //Timeout used when terminating the remote process
-    private static final int REMOTE_PROCESS_TERMINATION_TIMEOUT_SECONDS = 20;
+    private static final int REMOTE_PROCESS_TERMINATION_TIMEOUT_SECONDS = 280;
 
     // keep an optional journal of all IPC; disabled/no-op by default
     private ProcessJournal processJournal = new ProcessJournal();

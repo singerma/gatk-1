@@ -248,8 +248,8 @@ public final class ReferenceConfidenceModel {
 
             final VariantContext overlappingSite = getOverlappingVariantContext(curPos, variantCalls);
             final VariantContext currentPrior = getOverlappingVariantContext(curPos, VCpriors);   //TODO FIXME we're not doing any allele matching here, which is dangerous!!
+            List<VariantContext> priorList = currentPrior != null? Collections.singletonList(currentPrior) : Collections.emptyList();
             if ( overlappingSite != null && overlappingSite.getStart() == curPos.getStart() ) {
-                List<VariantContext> priorList = currentPrior != null? Collections.singletonList(currentPrior) : Collections.emptyList();
                 if (applyPriors) {
                     results.add(PosteriorProbabilitiesUtils.calculatePosteriorProbs(overlappingSite, priorList,
                             numRefSamplesForPrior, GATKVariantContextUtils.isGVCFSNP(overlappingSite) ?
@@ -260,7 +260,7 @@ public final class ReferenceConfidenceModel {
                 }
             } else {
                 // otherwise emit a reference confidence variant context
-                results.add(makeReferenceConfidenceVariantContext(ploidy, ref, sampleName, globalRefOffset, pileup, curPos, offset, applyPriors, VCpriors, numRefSamplesForPrior, Math.max(SNPdirichletPrior, INDELdirichletPrior)));
+                results.add(makeReferenceConfidenceVariantContext(ploidy, ref, sampleName, globalRefOffset, pileup, curPos, offset, applyPriors, priorList, numRefSamplesForPrior, Math.max(SNPdirichletPrior, INDELdirichletPrior)));
             }
         }
 

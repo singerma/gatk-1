@@ -53,8 +53,12 @@ public final class PosteriorProbabilitiesUtils {
         final Map<Allele,Integer> totalAlleleCounts = new HashMap<>();
         //only use discovered allele count if there are at least 10 samples
         final boolean useDiscoveredAC = !useACoff && vc1.getNSamples() >= 10;
+        int refPanelAN = 0;
 
         if(GATKVariantContextUtils.isGVCFSNP(vc1)) {
+            if(resources.isEmpty()) {
+                refPanelAN = numRefSamplesFromMissingResources;
+            }
             //store the allele counts for each allele in the variant priors
             resources.forEach(r -> addAlleleCounts(totalAlleleCounts, r, useAC));
 
@@ -65,7 +69,7 @@ public final class PosteriorProbabilitiesUtils {
 
             //add zero allele counts for any reference alleles not seen in priors (if applicable)
             final int existingRefCounts = totalAlleleCounts.getOrDefault(vc1.getReference(), 0);
-            totalAlleleCounts.put(vc1.getReference(), existingRefCounts + numRefSamplesFromMissingResources);
+            totalAlleleCounts.put(vc1.getReference(), existingRefCounts + refPanelAN);
         }
 
         // now extract the counts of the alleles in vc1 in order

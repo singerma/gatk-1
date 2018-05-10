@@ -307,6 +307,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "--apply-priors",
                 "-lenient",         //TODO: take this out
                 "-supporting", largeFileTestDir + "1000G.phase3.broad.withGenotypes.chr20.10100000.vcf",
+                "--num-reference-samples-if-no-call", "2500",
                 "-pairHMM", "AVX_LOGLESS_CACHING",
                 "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
         };

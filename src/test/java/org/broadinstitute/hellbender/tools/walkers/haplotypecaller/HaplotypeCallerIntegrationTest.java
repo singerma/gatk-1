@@ -676,21 +676,36 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         final File bam = new File(toolsTestDir, "mnp.bam");
 
         for (final int maxMnpDistance : new int[] {0, 1, 2, 3, 5}) {
-            for (final String ercMode : new String[]{"GVCF", "NONE"}) {
-                final File outputVcf = createTempFile("unfiltered", ".vcf");
+            final File outputVcf = createTempFile("unfiltered", ".vcf");
 
-                final List<String> args = Arrays.asList("-I", bam.getAbsolutePath(),
-                        "-R", b37_reference_20_21,
-                        "-L", "20:10019000-10022000",
-                        "-O", outputVcf.getAbsolutePath(),
-                        "-" + HaplotypeCallerArgumentCollection.MAX_MNP_DISTANCE_SHORT_NAME, Integer.toString(maxMnpDistance),
-                        "-ERC", ercMode);
-                runCommandLine(args);
+            final List<String> args = Arrays.asList("-I", bam.getAbsolutePath(),
+                    "-R", b37_reference_20_21,
+                    "-L", "20:10019000-10022000",
+                    "-O", outputVcf.getAbsolutePath(),
+                    "-" + HaplotypeCallerArgumentCollection.MAX_MNP_DISTANCE_SHORT_NAME, Integer.toString(maxMnpDistance));
+            runCommandLine(args);
 
-                Mutect2IntegrationTest.checkMnpOutput(maxMnpDistance, outputVcf);
-            }
+            Mutect2IntegrationTest.checkMnpOutput(maxMnpDistance, outputVcf);
         }
     }
+
+    @Test(expectedExceptions = CommandLineException.BadArgumentValue.class)
+    public void testMnpsThrowErrorInGVCFMode() throws Exception {
+        Utils.resetRandomGenerator();
+        final File bam = new File(toolsTestDir, "mnp.bam");
+        final int maxMnpDistance = 1;
+        final String ercMode = "GVCF";
+
+        final File outputVcf = createTempFile("unfiltered", ".vcf");
+
+        final List<String> args = Arrays.asList("-I", bam.getAbsolutePath(),
+                "-R", b37_reference_20_21,
+                "-L", "20:10019000-10022000",
+                "-O", outputVcf.getAbsolutePath(),
+                "-" + HaplotypeCallerArgumentCollection.MAX_MNP_DISTANCE_SHORT_NAME, Integer.toString(maxMnpDistance),
+                "-ERC", ercMode);
+        runCommandLine(args);
+}
 
     @Test(dataProvider = "getContaminationCorrectionTestData")
     public void testContaminationCorrection( final String contaminatedBam,

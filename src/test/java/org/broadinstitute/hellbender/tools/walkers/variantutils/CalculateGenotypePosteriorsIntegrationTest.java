@@ -28,6 +28,21 @@ public final class CalculateGenotypePosteriorsIntegrationTest extends CommandLin
 
     @Test
     //use the first 20 variants to save time; they have a nice range of AC from 4 to over 4000
+    public void testDefaultsWithPanel() throws IOException {
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                " -O %s" +
+                        " -R " + b37_reference_20_21 +    //NOTE: we need a reference for -L
+                        " -L 20:10009844" +
+                        " -V /Users/gauthier/workspaces/HCposteriors/oldResults.g.vcf" +
+                        " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE +" false" +
+                        " -supporting /Users/gauthier/workspaces/HCposteriors/priors.vcf",
+                Collections.singletonList(largeDir + "CalculateGenotypePosteriors/expectedCGP_testUsingDiscoveredAF.vcf")
+        );
+        spec.executeTest("testDefaultsWithPanel", this);
+    }
+
+    @Test
+    //use the first 20 variants to save time; they have a nice range of AC from 4 to over 4000
     public void testUsingDiscoveredAF() throws IOException {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
                         " -O %s" +

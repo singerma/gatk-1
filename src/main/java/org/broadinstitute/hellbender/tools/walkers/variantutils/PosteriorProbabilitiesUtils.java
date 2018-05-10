@@ -17,18 +17,6 @@ public final class PosteriorProbabilitiesUtils {
 
     private PosteriorProbabilitiesUtils(){}
 
-    /**
-     * Calculates phred-scaled posterior probabilities for genotypes given the data and allele frequency priors.
-     *
-     * @param vc1
-     * @param resources
-     * @param numRefSamplesFromMissingResources
-     * @param globalFrequencyPriorDirichlet
-     * @param useInputSamples -- use input samples for prior calculation
-     * @param useAC -- use the AC over the MLEAC (if available)
-     * @param useACoff -- use flat priors
-     * @return
-     */
     public static VariantContext calculatePosteriorProbs(final VariantContext vc1,
                                                          final Collection<VariantContext> resources,
                                                          final int numRefSamplesFromMissingResources,
@@ -36,12 +24,37 @@ public final class PosteriorProbabilitiesUtils {
                                                          final boolean useInputSamples,
                                                          final boolean useAC,
                                                          final boolean useACoff) {
+        return calculatePosteriorProbs(vc1, resources, numRefSamplesFromMissingResources, globalFrequencyPriorDirichlet,
+                useInputSamples, useAC, useACoff, true);
+    }
+
+
+        /**
+         * Calculates phred-scaled posterior probabilities for genotypes given the data and allele frequency priors.
+         *
+         * @param vc1
+         * @param resources
+         * @param numRefSamplesFromMissingResources
+         * @param globalFrequencyPriorDirichlet
+         * @param useInputSamples -- use input samples for prior calculation
+         * @param useAC -- use the AC over the MLEAC (if available)
+         * @param useACoff -- use flat priors
+         * @return
+         */
+    public static VariantContext calculatePosteriorProbs(final VariantContext vc1,
+                                                         final Collection<VariantContext> resources,
+                                                         final int numRefSamplesFromMissingResources,
+                                                         final double globalFrequencyPriorDirichlet,
+                                                         final boolean useInputSamples,
+                                                         final boolean useAC,
+                                                         final boolean useACoff,
+                                                         final boolean addInfoAnnotations) {
         Utils.nonNull(vc1, "VariantContext vc1 is null");
         final Map<Allele,Integer> totalAlleleCounts = new HashMap<>();
         //only use discovered allele count if there are at least 10 samples
         final boolean useDiscoveredAC = !useACoff && vc1.getNSamples() >= 10;
 
-        if(vc1.isSNP()) {
+        if(GATKVariantContextUtils.isGVCFSNP(vc1)) {
             //store the allele counts for each allele in the variant priors
             resources.forEach(r -> addAlleleCounts(totalAlleleCounts, r, useAC));
 
@@ -62,7 +75,7 @@ public final class PosteriorProbabilitiesUtils {
         final List<double[]> likelihoods = vc1.getGenotypes().stream().map(g -> parseLikelihoods(g)).collect(Collectors.toList());
 
         //TODO: for now just use priors that are SNPs because indel priors will bias SNP calls
-        final boolean useFlatPriors = !vc1.isSNP() || (resources.isEmpty() && !useDiscoveredAC) || resources.stream().anyMatch(r -> !r.isSNP()) ;
+        final boolean useFlatPriors = !GATKVariantContextUtils.isGVCFSNP(vc1) || (resources.isEmpty() && !useDiscoveredAC) || resources.stream().anyMatch(r -> !r.isSNP()) ;
 
         final List<double[]> posteriors = calculatePosteriorProbs(likelihoods,alleleCounts,vc1.getMaxPloidy(2), useFlatPriors);
 
@@ -82,9 +95,11 @@ public final class PosteriorProbabilitiesUtils {
         final List<Integer> priors = Utils.listFromPrimitives(
                 GenotypeLikelihoods.fromLog10Likelihoods(getDirichletPrior(alleleCounts, vc1.getMaxPloidy(2),useFlatPriors)).getAsPLs());
 
-        final VariantContextBuilder builder = new VariantContextBuilder(vc1).genotypes(newContext).attribute(GATKVCFConstants.GENOTYPE_PRIOR_KEY, priors);
-        // add in the AC, AF, and AN attributes
-        VariantContextUtils.calculateChromosomeCounts(builder, true);
+        final VariantContextBuilder builder = new VariantContextBuilder(vc1).genotypes(newContext);
+        if (addInfoAnnotations) {
+            // add in the AC, AF, and AN attributes and genotype prior
+            VariantContextUtils.calculateChromosomeCounts(builder.attribute(GATKVCFConstants.GENOTYPE_PRIOR_KEY, priors), true);
+        }
         return builder.make();
     }
 

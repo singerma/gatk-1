@@ -291,6 +291,32 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(concordance >= 0.99, "Concordance with GATK 3.8 in AS GVCF mode is < 99% (" +  concordance + ")");
     }
 
+    @Test(dataProvider="HaplotypeCallerTestInputs")
+    public void testGVCFModeGenotypePosteriors(final String inputFileName, final String referenceFileName) throws Exception {
+        Utils.resetRandomGenerator();
+
+        final File output = createTempFile("testGVCFModeIsConsistentWithPastResults", ".g.vcf");
+        final File expected = new File(TEST_FILES_DIR, "expected.testGVCFMode.gatk4.g.vcf");
+
+        final String[] args = {
+                "-I", inputFileName,
+                "-R", referenceFileName,
+                "-L", "20:10003105-10003358",
+                "-O", output.getAbsolutePath(),
+                "-ERC", "GVCF",
+                "--apply-priors",
+                "-lenient",         //TODO: take this out
+                "-supporting", largeFileTestDir + "1000G.phase3.broad.withGenotypes.chr20.10100000.vcf",
+                "-pairHMM", "AVX_LOGLESS_CACHING",
+                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
+        };
+
+        runCommandLine(args);
+
+        // Test for an exact match against past results
+        IntegrationTestSpec.assertEqualTextFiles(output, expected);
+    }
+
     @Test
     public void testGenotypeGivenAllelesMode() throws IOException {
         Utils.resetRandomGenerator();

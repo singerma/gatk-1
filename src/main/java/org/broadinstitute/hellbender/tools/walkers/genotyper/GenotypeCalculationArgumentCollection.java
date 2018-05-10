@@ -36,6 +36,9 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
         this.MAX_ALTERNATE_ALLELES = other.MAX_ALTERNATE_ALLELES;
         this.inputPrior = new ArrayList<>(other.inputPrior);
         this.samplePloidy = other.samplePloidy;
+        this.applyPriors = other.applyPriors;
+        this.supportVariants = other.supportVariants;
+        this.numRefIfMissing = other.numRefIfMissing;
     }
 
     /**
@@ -175,11 +178,12 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
     public boolean applyPriors = false;
 
     /**
-     * Supporting external panels. Allele counts from these panels (taken from AC,AN or MLEAC,AN or raw genotypes) will
+     * Supporting external panel. Allele counts from this panel (taken from AC,AN or MLEAC,AN or raw genotypes) will
      * be used to inform the frequency distribution underlying the genotype priors. These files must be VCF 4.2 spec or later.
      */
     @Argument(fullName="supporting-callsets", shortName = "supporting", doc="Other callsets to use in generating genotype posteriors", optional=true)
-    public List<FeatureInput<VariantContext>> supportVariants = new ArrayList<>();
+    public FeatureInput<VariantContext> supportVariants = null;
+    //NOTE: right now we only support a single resource for priors, unlike CalculateGenotypePosteriors
 
     /**
      * When a variant is not seen in a panel, this argument controls whether to infer (and with what effective strength)

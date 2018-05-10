@@ -331,8 +331,8 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                 readsDictionary,
                 createOutputVariantMD5,
                 createOutputVariantIndex ?
-                        new Options[]{Options.INDEX_ON_THE_FLY} :
-                        new Options[0]
+                        new Options[]{Options.INDEX_ON_THE_FLY, Options.ALLOW_MISSING_FIELDS_IN_HEADER} :
+                        new Options[]{Options.ALLOW_MISSING_FIELDS_IN_HEADER}
         );
 
         if ( hcArgs.emitReferenceConfidence == ReferenceConfidenceMode.GVCF ) {
@@ -369,6 +369,10 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                 VCFConstants.GENOTYPE_QUALITY_KEY,
                 VCFConstants.DEPTH_KEY,
                 VCFConstants.GENOTYPE_PL_KEY);
+
+        if (hcArgs.genotypeArgs.applyPriors) {
+            headerInfo.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY));
+        }
 
         if ( ! hcArgs.doNotRunPhysicalPhasing ) {
             headerInfo.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY));

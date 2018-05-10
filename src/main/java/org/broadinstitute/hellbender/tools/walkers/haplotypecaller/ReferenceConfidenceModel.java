@@ -182,6 +182,16 @@ public final class ReferenceConfidenceModel {
         return headerLines;
     }
 
+    public List<VariantContext> calculateRefConfidence(final Haplotype refHaplotype,
+                                                       final Collection<Haplotype> calledHaplotypes,
+                                                       final SimpleInterval paddedReferenceLoc,
+                                                       final AssemblyRegion activeRegion,
+                                                       final ReadLikelihoods<Haplotype> readLikelihoods,
+                                                       final PloidyModel ploidyModel,
+                                                       final List<VariantContext> variantCalls) {
+        return calculateRefConfidence(refHaplotype, calledHaplotypes, paddedReferenceLoc, activeRegion, readLikelihoods, ploidyModel, variantCalls, false, null, -1, -1);
+    }
+
     /**
      * Calculate the reference confidence for a single sample given the its read data
      *
@@ -237,9 +247,13 @@ public final class ReferenceConfidenceModel {
             final int offset = curPos.getStart() - refSpan.getStart();
 
             final VariantContext overlappingSite = getOverlappingVariantContext(curPos, variantCalls);
+            final VariantContext currentPrior = getOverlappingVariantContext(curPos, VCpriors);   //TODO FIXME we're not doing any allele matching here, which is dangerous!!
             if ( overlappingSite != null && overlappingSite.getStart() == curPos.getStart() ) {
-                if (applyPriors && VCpriors != null) {
-                    results.add(PosteriorProbabilitiesUtils.calculatePosteriorProbs(overlappingSite, VCpriors, numRefSamplesForPrior, overlappingSite.isSNP() ? SNPdirichletPrior : INDELdirichletPrior, false, true, false));
+                List<VariantContext> priorList = currentPrior != null? Collections.singletonList(currentPrior) : Collections.emptyList();
+                if (applyPriors) {
+                    results.add(PosteriorProbabilitiesUtils.calculatePosteriorProbs(overlappingSite, priorList,
+                            numRefSamplesForPrior, GATKVariantContextUtils.isGVCFSNP(overlappingSite) ?
+                                    SNPdirichletPrior : INDELdirichletPrior, true, false, false, true));  //use same options as CGP defaults for consistency
                 }
                 else {
                     results.add(overlappingSite);
@@ -294,10 +308,11 @@ public final class ReferenceConfidenceModel {
         gb.PL(leastConfidenceGLsAsPLs);
 
         if(!applyPriors) {
+            vcb.genotypes(gb.make());
             return vcb.make();
         }
         else {
-            return PosteriorProbabilitiesUtils.calculatePosteriorProbs(vcb.genotypes(gb.make()).make(), VCpriors, nRefSamples, globalFrequencyPriorDirichlet, false, true, false);
+            return PosteriorProbabilitiesUtils.calculatePosteriorProbs(vcb.genotypes(gb.make()).make(), VCpriors, nRefSamples, globalFrequencyPriorDirichlet, false, false, false);
             //TODO FIXME: after new-qual refactoring, these should be static calls to AF calculator
         }
     }

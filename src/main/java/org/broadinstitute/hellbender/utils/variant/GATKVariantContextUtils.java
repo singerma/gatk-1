@@ -1676,5 +1676,14 @@ public final class GATKVariantContextUtils {
         // If we have an equal number of bases in the reference and the alternate, we have an ONP:
         return ((refComparable.length() == altComperable.length()) && (!refComparable.equals(altComperable)));
     }
+
+    public static boolean isGVCFSNP(final VariantContext vc) {
+        for (final Allele a : vc.getAlternateAlleles()) {
+            if (a.length() != 1 && !a.isSymbolic()) {
+                return false;
+            }
+        }
+        return true;
+    }
 }
 
